@@ -1,0 +1,181 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { LogOut, Package, ShoppingCart, MessageSquare, Users, Megaphone } from 'lucide-react';
+import ProductsManager from '@/components/admin/ProductsManager';
+import OrdersManager from '@/components/admin/OrdersManager';
+import MessagesManager from '@/components/admin/MessagesManager';
+import UsersManager from '@/components/admin/UsersManager';
+import PromotionsManager from '@/components/admin/PromotionsManager';
+
+const Admin = () => {
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { isAdmin, loading } = useAdmin();
+
+  useEffect(() => {
+    if (!loading && (!user || !isAdmin)) {
+      navigate('/auth');
+    }
+  }, [user, isAdmin, loading, navigate]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Checking admin access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !isAdmin) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <img 
+                src="/lovable-uploads/e794c35d-09b9-447c-9ad8-265176240bde.png" 
+                alt="SmartHub Computers" 
+                className="h-10 w-auto"
+              />
+              <div>
+                <h1 className="text-2xl font-bold">Admin Panel</h1>
+                <p className="text-sm text-muted-foreground">SmartHub Computers Management</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-muted-foreground">
+                Welcome, {user.email}
+              </span>
+              <Button variant="outline" onClick={() => navigate('/')}>
+                View Site
+              </Button>
+              <Button variant="outline" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        <Tabs defaultValue="products" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="products" className="flex items-center space-x-2">
+              <Package className="h-4 w-4" />
+              <span>Products</span>
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="flex items-center space-x-2">
+              <ShoppingCart className="h-4 w-4" />
+              <span>Orders</span>
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="flex items-center space-x-2">
+              <MessageSquare className="h-4 w-4" />
+              <span>Messages</span>
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center space-x-2">
+              <Users className="h-4 w-4" />
+              <span>Users</span>
+            </TabsTrigger>
+            <TabsTrigger value="promotions" className="flex items-center space-x-2">
+              <Megaphone className="h-4 w-4" />
+              <span>Promotions</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="products">
+            <Card>
+              <CardHeader>
+                <CardTitle>Products Management</CardTitle>
+                <CardDescription>
+                  Add, edit, and delete products in your store
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ProductsManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="orders">
+            <Card>
+              <CardHeader>
+                <CardTitle>Orders Management</CardTitle>
+                <CardDescription>
+                  View and manage customer orders
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <OrdersManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="messages">
+            <Card>
+              <CardHeader>
+                <CardTitle>Customer Messages</CardTitle>
+                <CardDescription>
+                  View and respond to customer inquiries
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MessagesManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="users">
+            <Card>
+              <CardHeader>
+                <CardTitle>Users Management</CardTitle>
+                <CardDescription>
+                  Manage user accounts and admin permissions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <UsersManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="promotions">
+            <Card>
+              <CardHeader>
+                <CardTitle>Promotional Content</CardTitle>
+                <CardDescription>
+                  Create and manage promotional banners and campaigns
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PromotionsManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  );
+};
+
+export default Admin;
