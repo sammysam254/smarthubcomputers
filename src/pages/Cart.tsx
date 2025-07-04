@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
@@ -93,6 +92,12 @@ const Cart = () => {
     return customAddress;
   };
 
+  // Validate if product ID is a valid UUID
+  const isValidUUID = (uuid: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  };
+
   const handlePlaceOrder = async () => {
     if (!user) {
       toast.error('Please sign in to place an order');
@@ -121,53 +126,70 @@ const Cart = () => {
       return;
     }
 
+    // Validate product IDs
+    const invalidItems = items.filter(item => !isValidUUID(item.id));
+    if (invalidItems.length > 0) {
+      console.error('Invalid product IDs found:', invalidItems);
+      toast.error('Some items in your cart have invalid product IDs. Please refresh the page and try again.');
+      return;
+    }
+
     setLoading(true);
 
     try {
       // Create orders for each item in cart
       for (const item of items) {
-        const { error: orderError } = await supabase
-          .from('orders')
-          .insert({
-            user_id: user.id,
-            product_id: item.id,
-            quantity: item.quantity,
-            total_amount: (item.price * item.quantity) + (item.price * item.quantity * 0.15),
-            customer_name: customerInfo.name,
-            customer_email: customerInfo.email,
-            customer_phone: customerInfo.phone || null,
-            shipping_address: shippingAddress,
-            shipping_address_id: selectedAddressId || null,
-            payment_method: paymentMethod,
-            shipping_fee: item.price * item.quantity * 0.15,
-            status: 'pending'
-          });
+        console.log('Creating order for item:', item);
+        
+        const orderData = {
+          user_id: user.id,
+          product_id: item.id,
+          quantity: item.quantity,
+          total_amount: (item.price * item.quantity) + (item.price * item.quantity * 0.15),
+          customer_name: customerInfo.name,
+          customer_email: customerInfo.email,
+          customer_phone: customerInfo.phone || null,
+          shipping_address: shippingAddress,
+          shipping_address_id: selectedAddressId || null,
+          payment_method: paymentMethod,
+          shipping_fee: item.price * item.quantity * 0.15,
+          status: 'pending'
+        };
 
-        if (orderError) throw orderError;
+        console.log('Order data to insert:', orderData);
+
+        const { error: orderError, data: insertedOrder } = await supabase
+          .from('orders')
+          .insert(orderData)
+          .select()
+          .single();
+
+        if (orderError) {
+          console.error('Order creation error:', orderError);
+          throw orderError;
+        }
+
+        console.log('Order created successfully:', insertedOrder);
 
         // If M-Pesa payment, create M-Pesa payment record
-        if (paymentMethod === 'mpesa') {
-          const { data: orderData } = await supabase
-            .from('orders')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('product_id', item.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+        if (paymentMethod === 'mpesa' && insertedOrder) {
+          const mpesaData = {
+            order_id: insertedOrder.id,
+            amount: (item.price * item.quantity) + (item.price * item.quantity * 0.15),
+            mpesa_message: mpesaMessage,
+            phone_number: customerInfo.phone || null,
+            status: 'pending'
+          };
 
-          if (orderData) {
-            const { error: mpesaError } = await supabase
-              .from('mpesa_payments')
-              .insert({
-                order_id: orderData.id,
-                amount: (item.price * item.quantity) + (item.price * item.quantity * 0.15),
-                mpesa_message: mpesaMessage,
-                phone_number: customerInfo.phone || null,
-                status: 'pending'
-              });
+          console.log('Creating M-Pesa payment record:', mpesaData);
 
-            if (mpesaError) throw mpesaError;
+          const { error: mpesaError } = await supabase
+            .from('mpesa_payments')
+            .insert(mpesaData);
+
+          if (mpesaError) {
+            console.error('M-Pesa payment creation error:', mpesaError);
+            throw mpesaError;
           }
         }
       }
@@ -180,7 +202,11 @@ const Cart = () => {
       
     } catch (error) {
       console.error('Error placing order:', error);
-      toast.error('Failed to place order. Please try again.');
+      if (error.message?.includes('invalid input syntax for type uuid')) {
+        toast.error('Invalid product information. Please refresh the page and try again.');
+      } else {
+        toast.error('Failed to place order. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -231,6 +257,7 @@ const Cart = () => {
                       <p className="text-primary font-bold">
                         KES {item.price.toLocaleString()}
                       </p>
+                      <p className="text-xs text-muted-foreground">ID: {item.id}</p>
                     </div>
 
                     <div className="flex items-center space-x-2">
