@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff } from 'lucide-react';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
 
 const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,6 +18,8 @@ const Auth = () => {
     displayName: '',
   });
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<HCaptcha>(null);
   
   const { signUp, signIn, user } = useAuth();
   const { toast } = useToast();
@@ -59,9 +62,19 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!captchaToken) {
+      toast({
+        title: 'Verification Required',
+        description: 'Please complete the captcha verification.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setLoading(true);
     
-    const { error } = await signUp(formData.email, formData.password, formData.displayName);
+    const { error } = await signUp(formData.email, formData.password, formData.displayName, captchaToken);
     
     if (error) {
       toast({
@@ -69,14 +82,28 @@ const Auth = () => {
         description: error.message,
         variant: 'destructive',
       });
+      // Reset captcha on error
+      setCaptchaToken(null);
+      if (captchaRef.current) {
+        captchaRef.current.resetCaptcha();
+      }
     } else {
       toast({
         title: 'Account Created!',
         description: 'Please check your email to verify your account.',
       });
+      setCaptchaToken(null);
     }
     
     setLoading(false);
+  };
+
+  const handleCaptchaVerify = (token: string) => {
+    setCaptchaToken(token);
+  };
+
+  const handleCaptchaExpire = () => {
+    setCaptchaToken(null);
   };
 
   return (
@@ -207,7 +234,15 @@ const Auth = () => {
                       </Button>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <div className="space-y-2">
+                    <HCaptcha
+                      ref={captchaRef}
+                      sitekey="10000000-ffff-ffff-ffff-000000000001"
+                      onVerify={handleCaptchaVerify}
+                      onExpire={handleCaptchaExpire}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading || !captchaToken}>
                     {loading ? 'Creating Account...' : 'Create Account'}
                   </Button>
                 </form>
