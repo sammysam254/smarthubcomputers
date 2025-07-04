@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, Menu, User } from 'lucide-react';
+import { ShoppingCart, Menu, User, Zap } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import AdminLink from './AdminLink';
@@ -40,6 +40,10 @@ const Header = () => {
             </Link>
             <Link to="/products" className="text-foreground hover:text-primary transition-colors">
               Products
+            </Link>
+            <Link to="/flash-sales" className="text-foreground hover:text-primary transition-colors flex items-center space-x-1">
+              <Zap className="h-4 w-4 text-yellow-500" />
+              <span>Flash Sales</span>
             </Link>
             <Link to="/cart" className="text-foreground hover:text-primary transition-colors relative">
               <ShoppingCart className="h-5 w-5" />
@@ -106,6 +110,14 @@ const Header = () => {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Products
+              </Link>
+              <Link 
+                to="/flash-sales" 
+                className="text-foreground hover:text-primary transition-colors flex items-center space-x-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Zap className="h-4 w-4 text-yellow-500" />
+                <span>Flash Sales</span>
               </Link>
               <Link 
                 to="/cart" 

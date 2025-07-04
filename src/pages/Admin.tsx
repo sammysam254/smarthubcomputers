@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -5,12 +6,15 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LogOut, Package, ShoppingCart, MessageSquare, Users, Megaphone } from 'lucide-react';
+import { LogOut, Package, ShoppingCart, MessageSquare, Users, Megaphone, Zap, Ticket, Smartphone } from 'lucide-react';
 import ProductsManager from '@/components/admin/ProductsManager';
 import OrdersManager from '@/components/admin/OrdersManager';
 import MessagesManager from '@/components/admin/MessagesManager';
 import UsersManager from '@/components/admin/UsersManager';
 import PromotionsManager from '@/components/admin/PromotionsManager';
+import FlashSalesManager from '@/components/admin/FlashSalesManager';
+import VouchersManager from '@/components/admin/VouchersManager';
+import MpesaPaymentsManager from '@/components/admin/MpesaPaymentsManager';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -80,7 +84,7 @@ const Admin = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="products" className="flex items-center space-x-2">
               <Package className="h-4 w-4" />
               <span>Products</span>
@@ -88,6 +92,18 @@ const Admin = () => {
             <TabsTrigger value="orders" className="flex items-center space-x-2">
               <ShoppingCart className="h-4 w-4" />
               <span>Orders</span>
+            </TabsTrigger>
+            <TabsTrigger value="flash-sales" className="flex items-center space-x-2">
+              <Zap className="h-4 w-4" />
+              <span>Flash Sales</span>
+            </TabsTrigger>
+            <TabsTrigger value="vouchers" className="flex items-center space-x-2">
+              <Ticket className="h-4 w-4" />
+              <span>Vouchers</span>
+            </TabsTrigger>
+            <TabsTrigger value="mpesa" className="flex items-center space-x-2">
+              <Smartphone className="h-4 w-4" />
+              <span>M-Pesa</span>
             </TabsTrigger>
             <TabsTrigger value="messages" className="flex items-center space-x-2">
               <MessageSquare className="h-4 w-4" />
@@ -127,6 +143,48 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 <OrdersManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="flash-sales">
+            <Card>
+              <CardHeader>
+                <CardTitle>Flash Sales Management</CardTitle>
+                <CardDescription>
+                  Create and manage limited-time flash sales with special discounts
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FlashSalesManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="vouchers">
+            <Card>
+              <CardHeader>
+                <CardTitle>Voucher Management</CardTitle>
+                <CardDescription>
+                  Create and manage discount vouchers for customers
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <VouchersManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="mpesa">
+            <Card>
+              <CardHeader>
+                <CardTitle>M-Pesa Payment Management</CardTitle>
+                <CardDescription>
+                  Review and confirm M-Pesa payments from customers
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MpesaPaymentsManager />
               </CardContent>
             </Card>
           </TabsContent>

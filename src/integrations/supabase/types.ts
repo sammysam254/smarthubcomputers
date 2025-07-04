@@ -9,6 +9,62 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      flash_sales: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          created_by: string | null
+          discount_percentage: number
+          end_date: string
+          id: string
+          original_price: number
+          product_id: string
+          quantity_limit: number | null
+          sale_price: number
+          sold_quantity: number | null
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          discount_percentage: number
+          end_date: string
+          id?: string
+          original_price: number
+          product_id: string
+          quantity_limit?: number | null
+          sale_price: number
+          sold_quantity?: number | null
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          discount_percentage?: number
+          end_date?: string
+          id?: string
+          original_price?: number
+          product_id?: string
+          quantity_limit?: number | null
+          sale_price?: number
+          sold_quantity?: number | null
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flash_sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           created_at: string
@@ -45,6 +101,56 @@ export type Database = {
         }
         Relationships: []
       }
+      mpesa_payments: {
+        Row: {
+          amount: number
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          mpesa_code: string | null
+          mpesa_message: string
+          order_id: string
+          phone_number: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          mpesa_code?: string | null
+          mpesa_message: string
+          order_id: string
+          phone_number?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          mpesa_code?: string | null
+          mpesa_message?: string
+          order_id?: string
+          phone_number?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mpesa_payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string
@@ -52,13 +158,18 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           id: string
+          payment_method: string | null
           product_id: string
           quantity: number
           shipping_address: string
+          shipping_address_id: string | null
+          shipping_fee: number | null
           status: string
           total_amount: number
           updated_at: string
           user_id: string
+          voucher_discount: number | null
+          voucher_id: string | null
         }
         Insert: {
           created_at?: string
@@ -66,13 +177,18 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           id?: string
+          payment_method?: string | null
           product_id: string
           quantity?: number
           shipping_address: string
+          shipping_address_id?: string | null
+          shipping_fee?: number | null
           status?: string
           total_amount: number
           updated_at?: string
           user_id: string
+          voucher_discount?: number | null
+          voucher_id?: string | null
         }
         Update: {
           created_at?: string
@@ -80,13 +196,18 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           id?: string
+          payment_method?: string | null
           product_id?: string
           quantity?: number
           shipping_address?: string
+          shipping_address_id?: string | null
+          shipping_fee?: number | null
           status?: string
           total_amount?: number
           updated_at?: string
           user_id?: string
+          voucher_discount?: number | null
+          voucher_id?: string | null
         }
         Relationships: [
           {
@@ -94,6 +215,20 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_shipping_address_id_fkey"
+            columns: ["shipping_address_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "vouchers"
             referencedColumns: ["id"]
           },
         ]
@@ -229,6 +364,51 @@ export type Database = {
         }
         Relationships: []
       }
+      shipping_addresses: {
+        Row: {
+          address_line_1: string
+          address_line_2: string | null
+          city: string
+          county: string | null
+          created_at: string
+          id: string
+          is_default: boolean | null
+          name: string
+          phone: string | null
+          postal_code: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_line_1: string
+          address_line_2?: string | null
+          city: string
+          county?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name: string
+          phone?: string | null
+          postal_code?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address_line_1?: string
+          address_line_2?: string | null
+          city?: string
+          county?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          phone?: string | null
+          postal_code?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -250,6 +430,96 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      voucher_usage: {
+        Row: {
+          discount_amount: number
+          id: string
+          order_id: string
+          used_at: string
+          user_id: string
+          voucher_id: string
+        }
+        Insert: {
+          discount_amount: number
+          id?: string
+          order_id: string
+          used_at?: string
+          user_id: string
+          voucher_id: string
+        }
+        Update: {
+          discount_amount?: number
+          id?: string
+          order_id?: string
+          used_at?: string
+          user_id?: string
+          voucher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voucher_usage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voucher_usage_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "vouchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vouchers: {
+        Row: {
+          active: boolean | null
+          code: string
+          created_at: string
+          created_by: string | null
+          discount_type: string
+          discount_value: number
+          end_date: string | null
+          id: string
+          max_uses: number | null
+          minimum_purchase_amount: number | null
+          start_date: string | null
+          updated_at: string
+          used_count: number | null
+        }
+        Insert: {
+          active?: boolean | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          discount_type: string
+          discount_value: number
+          end_date?: string | null
+          id?: string
+          max_uses?: number | null
+          minimum_purchase_amount?: number | null
+          start_date?: string | null
+          updated_at?: string
+          used_count?: number | null
+        }
+        Update: {
+          active?: boolean | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          discount_type?: string
+          discount_value?: number
+          end_date?: string | null
+          id?: string
+          max_uses?: number | null
+          minimum_purchase_amount?: number | null
+          start_date?: string | null
+          updated_at?: string
+          used_count?: number | null
         }
         Relationships: []
       }
