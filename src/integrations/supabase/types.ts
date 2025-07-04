@@ -467,6 +467,124 @@ export type Database = {
         }
         Relationships: []
       }
+      support_ticket_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_internal: boolean
+          message: string
+          sender_email: string
+          sender_id: string | null
+          sender_name: string
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          message: string
+          sender_email: string
+          sender_id?: string | null
+          sender_name: string
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          message?: string
+          sender_email?: string
+          sender_id?: string | null
+          sender_name?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_management"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          assigned_to: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          customer_email: string
+          customer_name: string
+          id: string
+          initial_message: string
+          priority: string
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          id?: string
+          initial_message: string
+          priority?: string
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          id?: string
+          initial_message?: string
+          priority?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "admin_user_management"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "admin_user_management"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_management"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
