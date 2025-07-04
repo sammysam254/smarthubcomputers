@@ -7,7 +7,6 @@ import { ShoppingCart, Menu, User } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import AdminLink from './AdminLink';
-import MobileMenu from './MobileMenu';
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -89,11 +88,66 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      <MobileMenu 
-        isOpen={isMobileMenuOpen} 
-        onClose={() => setIsMobileMenuOpen(false)} 
-      />
+      {/* Mobile Menu - Conditional rendering based on state */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden border-t bg-background/95 backdrop-blur">
+          <div className="container mx-auto px-4 py-4">
+            <nav className="flex flex-col space-y-4">
+              <Link 
+                to="/" 
+                className="text-foreground hover:text-primary transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Home
+              </Link>
+              <Link 
+                to="/products" 
+                className="text-foreground hover:text-primary transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Products
+              </Link>
+              <Link 
+                to="/cart" 
+                className="text-foreground hover:text-primary transition-colors flex items-center space-x-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <ShoppingCart className="h-5 w-5" />
+                <span>Cart ({totalItems})</span>
+              </Link>
+              
+              {/* Mobile Auth & Admin */}
+              <div className="flex flex-col space-y-2 pt-4 border-t">
+                <AdminLink />
+                {user ? (
+                  <div className="flex flex-col space-y-2">
+                    <span className="text-sm text-muted-foreground">
+                      {user.email}
+                    </span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        handleSignOut();
+                        setIsMobileMenuOpen(false);
+                      }}
+                    >
+                      Sign Out
+                    </Button>
+                  </div>
+                ) : (
+                  <Link to="/auth" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button variant="outline" size="sm">
+                      <User className="h-4 w-4 mr-2" />
+                      Sign In
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </nav>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
