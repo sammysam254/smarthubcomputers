@@ -10,10 +10,11 @@ const Footer = () => {
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">SH</span>
-              </div>
-              <h3 className="text-xl font-bold">SmartHub Computers</h3>
+              <img 
+                src="/lovable-uploads/e794c35d-09b9-447c-9ad8-265176240bde.png" 
+                alt="SmartHub Computers" 
+                className="h-8 w-auto"
+              />
             </div>
             <p className="text-background/80 text-sm">
               Your trusted partner for premium computers, laptops, and tech solutions. 

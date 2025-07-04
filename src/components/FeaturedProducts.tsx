@@ -114,11 +114,11 @@ const FeaturedProducts = () => {
                     {/* Price */}
                     <div className="flex items-center space-x-2">
                       <span className="text-2xl font-bold text-primary">
-                        ${product.price}
+                        KES {product.price.toLocaleString()}
                       </span>
                       {product.originalPrice && (
                         <span className="text-sm text-muted-foreground line-through">
-                          ${product.originalPrice}
+                          KES {product.originalPrice.toLocaleString()}
                         </span>
                       )}
                     </div>
