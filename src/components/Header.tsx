@@ -10,10 +10,11 @@ const Header = () => {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center space-x-2">
-            <div className="h-8 w-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">SH</span>
-            </div>
-            <h1 className="text-xl font-bold text-foreground">SmartHub Computers</h1>
+            <img 
+              src="/lovable-uploads/e794c35d-09b9-447c-9ad8-265176240bde.png" 
+              alt="SmartHub Computers" 
+              className="h-10 w-auto"
+            />
           </div>
 
           {/* Search Bar */}
