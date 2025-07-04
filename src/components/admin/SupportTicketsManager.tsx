@@ -113,6 +113,24 @@ const SupportTicketsManager = () => {
 
       if (error) throw error;
 
+      // Send email notification when ticket is closed
+      if (newStatus === 'closed' && selectedTicket) {
+        try {
+          await supabase.functions.invoke('send-ticket-email', {
+            body: {
+              to: selectedTicket.customer_email,
+              customerName: selectedTicket.customer_name,
+              subject: selectedTicket.subject,
+              ticketId: selectedTicket.id,
+              type: 'closed'
+            }
+          });
+        } catch (emailError) {
+          console.error('Failed to send closure email notification:', emailError);
+          // Don't block the status change if email fails
+        }
+      }
+
       await fetchTickets();
       if (selectedTicket?.id === ticketId) {
         setSelectedTicket(prev => prev ? { ...prev, status: newStatus as any } : null);
@@ -120,7 +138,9 @@ const SupportTicketsManager = () => {
 
       toast({
         title: "Success",
-        description: `Ticket status updated to ${newStatus}`,
+        description: newStatus === 'closed' 
+          ? "Ticket closed and customer notified" 
+          : `Ticket status updated to ${newStatus}`,
       });
     } catch (error) {
       console.error('Error updating ticket status:', error);
@@ -149,6 +169,24 @@ const SupportTicketsManager = () => {
 
       if (error) throw error;
 
+      // Send email notification to customer
+      try {
+        await supabase.functions.invoke('send-ticket-email', {
+          body: {
+            to: selectedTicket.customer_email,
+            customerName: selectedTicket.customer_name,
+            subject: selectedTicket.subject,
+            ticketId: selectedTicket.id,
+            message: replyMessage,
+            type: 'reply',
+            adminName: user?.email?.split('@')[0] || 'Admin'
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send email notification:', emailError);
+        // Don't block the reply if email fails
+      }
+
       // Update ticket status to in_progress if it's still open
       if (selectedTicket.status === 'open') {
         await handleStatusChange(selectedTicket.id, 'in_progress');
@@ -159,7 +197,7 @@ const SupportTicketsManager = () => {
 
       toast({
         title: "Success",
-        description: "Reply sent successfully",
+        description: "Reply sent successfully and customer notified",
       });
     } catch (error) {
       console.error('Error sending reply:', error);
