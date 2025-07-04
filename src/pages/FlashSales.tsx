@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAdmin, FlashSale } from '@/hooks/useAdmin';
+import { useCart } from '@/hooks/useCart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,9 +9,12 @@ import { Clock, ShoppingCart, Zap } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 const FlashSales = () => {
   const { fetchFlashSales } = useAdmin();
+  const { addToCart } = useCart();
+  const navigate = useNavigate();
   const [flashSales, setFlashSales] = useState<FlashSale[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,6 +54,31 @@ const FlashSales = () => {
     if (days > 0) return `${days}d ${hours}h ${minutes}m`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
+  };
+
+  const handleBuyNow = (sale: FlashSale) => {
+    if (!sale.products) {
+      toast.error('Product information not available');
+      return;
+    }
+
+    // Check if there's enough quantity available
+    const availableQuantity = sale.quantity_limit ? sale.quantity_limit - (sale.sold_quantity || 0) : 999;
+    if (availableQuantity <= 0) {
+      toast.error('This flash sale item is out of stock');
+      return;
+    }
+
+    // Add to cart with flash sale price
+    addToCart({
+      id: sale.product_id,
+      name: sale.products.name,
+      price: sale.sale_price,
+      image: sale.products.image_url || 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=400&h=400&fit=crop&crop=center'
+    });
+
+    toast.success(`${sale.products.name} added to cart at flash sale price!`);
+    navigate('/cart');
   };
 
   if (loading) {
@@ -96,66 +125,76 @@ const FlashSales = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {flashSales.map((sale) => (
-              <Card key={sale.id} className="group hover:shadow-lg transition-shadow border-2 border-red-200">
-                <CardHeader className="relative">
-                  <div className="absolute top-2 right-2">
-                    <Badge variant="destructive" className="animate-pulse">
-                      -{sale.discount_percentage}%
-                    </Badge>
-                  </div>
-                  
-                  {sale.products?.image_url && (
-                    <img
-                      src={sale.products.image_url}
-                      alt={sale.products.name}
-                      className="w-full h-48 object-cover rounded-lg mb-4"
-                    />
-                  )}
-                  
-                  <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                    {sale.products?.name}
-                  </CardTitle>
-                  
-                  <CardDescription>
-                    {sale.products?.description}
-                  </CardDescription>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  {/* Price Section */}
-                  <div className="flex items-center space-x-2">
-                    <span className="text-2xl font-bold text-primary">
-                      KES {sale.sale_price.toLocaleString()}
-                    </span>
-                    <span className="text-lg text-muted-foreground line-through">
-                      KES {sale.original_price.toLocaleString()}
-                    </span>
-                  </div>
-
-                  {/* Quantity Info */}
-                  {sale.quantity_limit && (
-                    <div className="text-sm text-muted-foreground">
-                      Available: {sale.quantity_limit - (sale.sold_quantity || 0)} left
+            {flashSales.map((sale) => {
+              const availableQuantity = sale.quantity_limit ? sale.quantity_limit - (sale.sold_quantity || 0) : 999;
+              const isOutOfStock = availableQuantity <= 0;
+              
+              return (
+                <Card key={sale.id} className="group hover:shadow-lg transition-shadow border-2 border-red-200">
+                  <CardHeader className="relative">
+                    <div className="absolute top-2 right-2">
+                      <Badge variant="destructive" className="animate-pulse">
+                        -{sale.discount_percentage}%
+                      </Badge>
                     </div>
-                  )}
+                    
+                    {sale.products?.image_url && (
+                      <img
+                        src={sale.products.image_url}
+                        alt={sale.products.name}
+                        className="w-full h-48 object-cover rounded-lg mb-4"
+                      />
+                    )}
+                    
+                    <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                      {sale.products?.name}
+                    </CardTitle>
+                    
+                    <CardDescription>
+                      {sale.products?.description}
+                    </CardDescription>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-4">
+                    {/* Price Section */}
+                    <div className="flex items-center space-x-2">
+                      <span className="text-2xl font-bold text-primary">
+                        KES {sale.sale_price.toLocaleString()}
+                      </span>
+                      <span className="text-lg text-muted-foreground line-through">
+                        KES {sale.original_price.toLocaleString()}
+                      </span>
+                    </div>
 
-                  {/* Time Remaining */}
-                  <div className="flex items-center text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded-lg">
-                    <Clock className="h-4 w-4 mr-1" />
-                    <span className="font-medium">
-                      Ends in: {calculateTimeRemaining(sale.end_date)}
-                    </span>
-                  </div>
+                    {/* Quantity Info */}
+                    {sale.quantity_limit && (
+                      <div className="text-sm text-muted-foreground">
+                        Available: {availableQuantity} left
+                      </div>
+                    )}
 
-                  {/* Action Button */}
-                  <Button className="w-full" size="lg">
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Buy Now - Save KES {(sale.original_price - sale.sale_price).toLocaleString()}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                    {/* Time Remaining */}
+                    <div className="flex items-center text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded-lg">
+                      <Clock className="h-4 w-4 mr-1" />
+                      <span className="font-medium">
+                        Ends in: {calculateTimeRemaining(sale.end_date)}
+                      </span>
+                    </div>
+
+                    {/* Action Button */}
+                    <Button 
+                      className="w-full" 
+                      size="lg"
+                      onClick={() => handleBuyNow(sale)}
+                      disabled={isOutOfStock}
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      {isOutOfStock ? 'Out of Stock' : `Buy Now - Save KES ${(sale.original_price - sale.sale_price).toLocaleString()}`}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>

@@ -2,8 +2,9 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Home, Package, Zap, User, Package2 } from 'lucide-react';
+import { Home, Package, Zap, User, Package2, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -11,7 +12,7 @@ interface MobileMenuProps {
 }
 
 const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
   const menuItems = [
     { href: '/', label: 'Home', icon: Home },
@@ -20,9 +21,25 @@ const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
     ...(user ? [{ href: '/my-orders', label: 'My Orders', icon: Package2 }] : []),
   ];
 
+  const handleSignOut = async () => {
+    try {
+      const { error } = await signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+        toast.error('Failed to sign out. Please try again.');
+      } else {
+        toast.success('Signed out successfully');
+        onClose();
+      }
+    } catch (error) {
+      console.error('Unexpected error during sign out:', error);
+      toast.error('Failed to sign out. Please try again.');
+    }
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="left" className="w-80">
+      <SheetContent side="left" className="w-80 flex flex-col">
         <SheetHeader>
           <SheetTitle className="flex items-center space-x-2">
             <img 
@@ -34,7 +51,8 @@ const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
           </SheetTitle>
         </SheetHeader>
         
-        <nav className="flex flex-col space-y-4 mt-8">
+        {/* Navigation Menu */}
+        <nav className="flex flex-col space-y-2 mt-8 flex-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -44,28 +62,41 @@ const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
                 onClick={onClose}
                 className="flex items-center space-x-3 p-3 rounded-lg hover:bg-accent transition-colors"
               >
-                <Icon className="h-5 w-5" />
-                <span>{item.label}</span>
+                <Icon className="h-5 w-5 flex-shrink-0" />
+                <span className="truncate">{item.label}</span>
               </Link>
             );
           })}
-          
+        </nav>
+        
+        {/* User Section */}
+        <div className="border-t pt-4 mt-4">
           {user ? (
-            <div className="pt-4 border-t">
-              <div className="flex items-center space-x-3 p-3">
-                <User className="h-5 w-5" />
-                <span className="text-sm text-muted-foreground">{user.email}</span>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+                <User className="h-5 w-5 flex-shrink-0" />
+                <span className="text-sm text-muted-foreground truncate">
+                  {user.email}
+                </span>
               </div>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={handleSignOut}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
             </div>
           ) : (
             <Link to="/auth" onClick={onClose}>
-              <Button className="w-full">
+              <Button className="w-full justify-start">
                 <User className="h-4 w-4 mr-2" />
                 Sign In
               </Button>
             </Link>
           )}
-        </nav>
+        </div>
       </SheetContent>
     </Sheet>
   );
