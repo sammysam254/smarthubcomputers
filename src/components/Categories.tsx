@@ -64,38 +64,40 @@ const Categories = () => {
           {categories.map((category, index) => {
             const Icon = category.icon;
             return (
-              <Card 
+              <button 
                 key={index} 
-                className="group hover:shadow-card transition-all duration-300 hover:-translate-y-1 cursor-pointer border-border/50 hover:border-primary/30"
+                className="group hover:shadow-card transition-all duration-300 hover:-translate-y-1 cursor-pointer w-full text-left"
               >
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${category.gradient} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                      <Icon className="h-6 w-6 text-white" />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <h3 className="text-xl font-semibold group-hover:text-primary transition-colors">
-                        {category.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm">
-                        {category.description}
-                      </p>
-                      <p className="text-primary font-medium text-sm">
-                        {category.count}
-                      </p>
-                    </div>
+                <Card className="border-border/50 hover:border-primary/30 h-full">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${category.gradient} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                        <Icon className="h-6 w-6 text-white" />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <h3 className="text-xl font-semibold group-hover:text-primary transition-colors">
+                          {category.title}
+                        </h3>
+                        <p className="text-muted-foreground text-sm">
+                          {category.description}
+                        </p>
+                        <p className="text-primary font-medium text-sm">
+                          {category.count}
+                        </p>
+                      </div>
 
-                    <Button 
-                      variant="tech" 
-                      size="sm" 
-                      className="w-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    >
-                      Browse {category.title}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                      <Button 
+                        variant="tech" 
+                        size="sm" 
+                        className="w-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      >
+                        Browse {category.title}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </button>
             );
           })}
         </div>

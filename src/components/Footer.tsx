@@ -38,9 +38,9 @@ const Footer = () => {
             <ul className="space-y-2">
               {["Laptops", "Desktops", "Components", "Gaming", "Accessories", "Support"].map((link) => (
                 <li key={link}>
-                  <a href="#" className="text-background/80 hover:text-background transition-colors text-sm">
+                  <button className="text-background/80 hover:text-background transition-colors text-sm text-left">
                     {link}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -52,9 +52,9 @@ const Footer = () => {
             <ul className="space-y-2">
               {["Contact Us", "Shipping Info", "Returns", "Warranty", "FAQ", "Live Chat"].map((link) => (
                 <li key={link}>
-                  <a href="#" className="text-background/80 hover:text-background transition-colors text-sm">
+                  <button className="text-background/80 hover:text-background transition-colors text-sm text-left">
                     {link}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>

@@ -65,72 +65,71 @@ const FeaturedProducts = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {products.map((product) => (
-            <Card 
-              key={product.id} 
-              className="group hover:shadow-card transition-all duration-300 hover:-translate-y-2 bg-background border-border/50 hover:border-primary/30"
-            >
-              <CardContent className="p-0">
-                <div className="relative overflow-hidden rounded-t-lg">
-                  <img 
-                    src={product.image} 
-                    alt={product.name}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  
-                  {/* Badge */}
-                  <Badge className={`absolute top-3 left-3 ${product.badgeColor} text-white`}>
-                    {product.badge}
-                  </Badge>
+            <button key={product.id} className="group w-full text-left">
+              <Card className="hover:shadow-card transition-all duration-300 hover:-translate-y-2 bg-background border-border/50 hover:border-primary/30 h-full">
+                <CardContent className="p-0">
+                  <div className="relative overflow-hidden rounded-t-lg">
+                    <img 
+                      src={product.image} 
+                      alt={product.name}
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    
+                    {/* Badge */}
+                    <Badge className={`absolute top-3 left-3 ${product.badgeColor} text-white`}>
+                      {product.badge}
+                    </Badge>
 
-                  {/* Hover Actions */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2">
-                    <Button variant="secondary" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button variant="tech" size="sm">
-                      <ShoppingCart className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="p-4 space-y-3">
-                  <h3 className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-2">
-                    {product.name}
-                  </h3>
-
-                  {/* Rating */}
-                  <div className="flex items-center space-x-2">
-                    <div className="flex items-center">
-                      {[...Array(5)].map((_, i) => (
-                        <Star 
-                          key={i} 
-                          className={`h-4 w-4 ${i < Math.floor(product.rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
-                        />
-                      ))}
+                    {/* Hover Actions */}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2">
+                      <Button variant="secondary" size="sm" onClick={(e) => e.stopPropagation()}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="tech" size="sm" onClick={(e) => e.stopPropagation()}>
+                        <ShoppingCart className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      {product.rating} ({product.reviews})
-                    </span>
                   </div>
 
-                  {/* Price */}
-                  <div className="flex items-center space-x-2">
-                    <span className="text-2xl font-bold text-primary">
-                      ${product.price}
-                    </span>
-                    {product.originalPrice && (
-                      <span className="text-sm text-muted-foreground line-through">
-                        ${product.originalPrice}
+                  <div className="p-4 space-y-3">
+                    <h3 className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-2">
+                      {product.name}
+                    </h3>
+
+                    {/* Rating */}
+                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <Star 
+                            key={i} 
+                            className={`h-4 w-4 ${i < Math.floor(product.rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {product.rating} ({product.reviews})
                       </span>
-                    )}
-                  </div>
+                    </div>
 
-                  <Button variant="cart" className="w-full">
-                    Add to Cart
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                    {/* Price */}
+                    <div className="flex items-center space-x-2">
+                      <span className="text-2xl font-bold text-primary">
+                        ${product.price}
+                      </span>
+                      {product.originalPrice && (
+                        <span className="text-sm text-muted-foreground line-through">
+                          ${product.originalPrice}
+                        </span>
+                      )}
+                    </div>
+
+                    <Button variant="cart" className="w-full" onClick={(e) => e.stopPropagation()}>
+                      Add to Cart
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </button>
           ))}
         </div>
 
