@@ -10,6 +10,7 @@ import { Star, ShoppingCart, Search } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ProductModal from '@/components/ProductModal';
 
 interface Product {
   id: string;
@@ -23,6 +24,7 @@ interface Product {
   badge: string | null;
   badge_color: string | null;
   in_stock: boolean | null;
+  description: string | null;
 }
 
 const Products = () => {
@@ -31,6 +33,8 @@ const Products = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [sortBy, setSortBy] = useState('name');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const { addToCart } = useCart();
 
@@ -99,6 +103,11 @@ const Products = () => {
       price: product.price,
       image: product.image_url || '',
     });
+  };
+
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
   };
 
   if (loading) {
@@ -204,7 +213,10 @@ const Products = () => {
                   </div>
 
                   <div className="p-4 space-y-3">
-                    <h3 className="font-semibold text-lg line-clamp-2">
+                    <h3 
+                      className="font-semibold text-lg line-clamp-2 cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => handleProductClick(product)}
+                    >
                       {product.name}
                     </h3>
 
@@ -257,6 +269,12 @@ const Products = () => {
           </div>
         )}
       </div>
+      
+      <ProductModal
+        product={selectedProduct}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
       
       <Footer />
     </div>

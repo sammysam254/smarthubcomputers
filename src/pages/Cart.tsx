@@ -1,9 +1,12 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,6 +21,14 @@ const Cart = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('mpesa');
+  const [mpesaMessage, setMpesaMessage] = useState('');
+  const [voucherCode, setVoucherCode] = useState('');
+
+  // Calculate shipping fee as 15% of total price
+  const shippingFee = Math.round(totalPrice * 0.15);
+  const taxAmount = Math.round(totalPrice * 0.16);
+  const finalTotal = totalPrice + shippingFee + taxAmount;
 
   const handleCheckout = async () => {
     if (!user) {
@@ -29,13 +40,24 @@ const Cart = () => {
       return;
     }
 
+    if (paymentMethod === 'mpesa' && !mpesaMessage.trim()) {
+      toast({
+        title: "M-Pesa message required",
+        description: "Please paste your M-Pesa confirmation message",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsCheckingOut(true);
     
     // Simulate checkout process
     setTimeout(() => {
       toast({
         title: "Order placed successfully!",
-        description: "Thank you for your purchase. You'll receive a confirmation email shortly.",
+        description: paymentMethod === 'mpesa' 
+          ? "Your M-Pesa payment is being verified. You'll receive confirmation shortly."
+          : "Thank you for your purchase. You'll receive a confirmation email shortly.",
       });
       clearCart();
       navigate('/');
@@ -158,12 +180,12 @@ const Cart = () => {
                     <span>KES {totalPrice.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Shipping</span>
-                    <span>KES 500</span>
+                    <span>Shipping (15%)</span>
+                    <span>KES {shippingFee.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Tax</span>
-                    <span>KES {Math.round(totalPrice * 0.16).toLocaleString()}</span>
+                    <span>Tax (16%)</span>
+                    <span>KES {taxAmount.toLocaleString()}</span>
                   </div>
                 </div>
                 
@@ -171,8 +193,51 @@ const Cart = () => {
                 
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>KES {(totalPrice + 500 + Math.round(totalPrice * 0.16)).toLocaleString()}</span>
+                  <span>KES {finalTotal.toLocaleString()}</span>
                 </div>
+
+                {/* Voucher Code */}
+                <div className="space-y-2">
+                  <Label htmlFor="voucher">Voucher Code</Label>
+                  <Input
+                    id="voucher"
+                    placeholder="Enter voucher code"
+                    value={voucherCode}
+                    onChange={(e) => setVoucherCode(e.target.value)}
+                  />
+                </div>
+
+                {/* Payment Method */}
+                <div className="space-y-3">
+                  <Label>Payment Method</Label>
+                  <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="mpesa" id="mpesa" />
+                      <Label htmlFor="mpesa">M-Pesa (0704144239)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="cash" id="cash" />
+                      <Label htmlFor="cash">Cash on Delivery</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {/* M-Pesa Message Input */}
+                {paymentMethod === 'mpesa' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="mpesa-message">M-Pesa Confirmation Message</Label>
+                    <textarea
+                      id="mpesa-message"
+                      placeholder="Paste your M-Pesa confirmation message here..."
+                      value={mpesaMessage}
+                      onChange={(e) => setMpesaMessage(e.target.value)}
+                      className="w-full p-2 border rounded-md resize-none h-20 text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Send money to 0704144239 and paste the confirmation message here
+                    </p>
+                  </div>
+                )}
                 
                 <div className="space-y-3">
                   <Button 
