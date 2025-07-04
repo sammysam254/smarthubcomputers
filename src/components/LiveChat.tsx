@@ -18,6 +18,7 @@ interface ChatMessage {
   timestamp: Date;
   name?: string;
   isTyping?: boolean;
+  ticketId?: string;
 }
 
 interface TicketForm {
@@ -44,6 +45,7 @@ const LiveChat = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [showTicketDialog, setShowTicketDialog] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [activeTicketIds, setActiveTicketIds] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const [ticketForm, setTicketForm] = useState<TicketForm>({
@@ -71,6 +73,57 @@ const LiveChat = () => {
       }));
     }
   }, [user]);
+
+  // Subscribe to support ticket messages for real-time admin replies
+  useEffect(() => {
+    if (!user || activeTicketIds.length === 0) return;
+
+    const channel = supabase
+      .channel('support-ticket-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_ticket_messages',
+          filter: `ticket_id=in.(${activeTicketIds.join(',')})`
+        },
+        (payload) => {
+          const newMessage = payload.new;
+          
+          // Only show messages from admins (not from the user themselves)
+          if (newMessage.sender_email !== user.email) {
+            const supportMessage: ChatMessage = {
+              id: newMessage.id,
+              message: newMessage.message,
+              sender: 'support',
+              timestamp: new Date(newMessage.created_at),
+              name: newMessage.sender_name,
+              ticketId: newMessage.ticket_id
+            };
+
+            setMessages(prev => [...prev, supportMessage]);
+            
+            // Add a notification message
+            setTimeout(() => {
+              const notificationMessage: ChatMessage = {
+                id: `notification-${Date.now()}`,
+                message: "💬 You received a reply from our support team above. You can continue the conversation here or check your email.",
+                sender: 'ai',
+                timestamp: new Date(),
+                name: 'AI Assistant'
+              };
+              setMessages(prev => [...prev, notificationMessage]);
+            }, 500);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, activeTicketIds]);
 
   const callAIChatbot = async (message: string) => {
     try {
@@ -205,13 +258,18 @@ const LiveChat = () => {
       // Add confirmation message to chat
       const confirmationMessage: ChatMessage = {
         id: Date.now().toString(),
-        message: `✅ Support ticket #${response.data.ticketId.slice(-8)} has been created successfully! Our team will respond within 24 hours to ${ticketForm.customerEmail}.`,
+        message: `✅ Support ticket #${response.data.ticketId.slice(-8)} has been created successfully! Our team will respond within 24 hours to ${ticketForm.customerEmail}. Any replies from support will appear here in this chat.`,
         sender: 'ai',
         timestamp: new Date(),
-        name: 'AI Assistant'
+        name: 'AI Assistant',
+        ticketId: response.data.ticketId
       };
 
       setMessages(prev => [...prev, confirmationMessage]);
+      
+      // Add ticket ID to active tickets for real-time subscriptions
+      setActiveTicketIds(prev => [...prev, response.data.ticketId]);
+      
       setShowTicketDialog(false);
       
       // Reset form
