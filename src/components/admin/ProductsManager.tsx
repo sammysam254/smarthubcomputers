@@ -357,12 +357,12 @@ const ProductsManager = () => {
                 </TableCell>
                 <TableCell className="capitalize">{product.category}</TableCell>
                 <TableCell>
-                  <div>
-                    KES {product.price.toLocaleString()}
+                  <div className="flex items-center space-x-2">
+                    <span>KES {product.price.toLocaleString()}</span>
                     {product.original_price && (
-                      <div className="text-xs text-muted-foreground line-through">
+                      <span className="text-xs text-muted-foreground line-through">
                         KES {product.original_price.toLocaleString()}
-                      </div>
+                      </span>
                     )}
                   </div>
                 </TableCell>
