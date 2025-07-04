@@ -15,6 +15,7 @@ import PromotionsManager from '@/components/admin/PromotionsManager';
 import FlashSalesManager from '@/components/admin/FlashSalesManager';
 import VouchersManager from '@/components/admin/VouchersManager';
 import MpesaPaymentsManager from '@/components/admin/MpesaPaymentsManager';
+import { toast } from 'sonner';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -22,16 +23,37 @@ const Admin = () => {
   const { isAdmin, loading } = useAdmin();
 
   useEffect(() => {
-    if (!loading && (!user || !isAdmin)) {
-      navigate('/auth');
+    // If not loading and either no user or not admin, redirect to auth
+    if (!loading) {
+      if (!user) {
+        toast.error('You must be logged in to access the admin panel');
+        navigate('/auth');
+        return;
+      }
+      
+      if (!isAdmin) {
+        toast.error('You do not have admin privileges');
+        navigate('/');
+        return;
+      }
     }
   }, [user, isAdmin, loading, navigate]);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      const { error } = await signOut();
+      if (error) {
+        toast.error('Failed to sign out');
+      } else {
+        toast.success('Signed out successfully');
+        navigate('/');
+      }
+    } catch (error) {
+      toast.error('Failed to sign out');
+    }
   };
 
+  // Show loading state while checking admin status
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -43,6 +65,7 @@ const Admin = () => {
     );
   }
 
+  // Don't render anything if user is not admin (redirect will happen via useEffect)
   if (!user || !isAdmin) {
     return null;
   }

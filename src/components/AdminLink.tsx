@@ -9,8 +9,8 @@ const AdminLink = () => {
   const { user } = useAuth();
   const { isAdmin, loading } = useAdmin();
 
-  // Don't show anything while loading or if user is not admin
-  if (loading || !user || !isAdmin) {
+  // Only show admin link if user exists, is not loading, and is actually an admin
+  if (!user || loading || !isAdmin) {
     return null;
   }
 

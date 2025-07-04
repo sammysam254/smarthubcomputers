@@ -8,6 +8,7 @@ import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import MobileMenu from './MobileMenu';
 import AdminLink from './AdminLink';
+import { toast } from 'sonner';
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -18,8 +19,19 @@ const Header = () => {
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      const { error } = await signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+        toast.error('Failed to sign out. Please try again.');
+      } else {
+        toast.success('Signed out successfully');
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Unexpected error during sign out:', error);
+      toast.error('Failed to sign out. Please try again.');
+    }
   };
 
   return (
