@@ -6,7 +6,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LogOut, Package, ShoppingCart, MessageSquare, Users, Megaphone, Zap, Ticket, Smartphone } from 'lucide-react';
+import { LogOut, Package, ShoppingCart, MessageSquare, Users, Megaphone, Zap, Ticket, Smartphone, Headphones } from 'lucide-react';
 import ProductsManager from '@/components/admin/ProductsManager';
 import OrdersManager from '@/components/admin/OrdersManager';
 import MessagesManager from '@/components/admin/MessagesManager';
@@ -15,6 +15,7 @@ import PromotionsManager from '@/components/admin/PromotionsManager';
 import FlashSalesManager from '@/components/admin/FlashSalesManager';
 import VouchersManager from '@/components/admin/VouchersManager';
 import MpesaPaymentsManager from '@/components/admin/MpesaPaymentsManager';
+import SupportTicketsManager from '@/components/admin/SupportTicketsManager';
 import { toast } from 'sonner';
 
 const Admin = () => {
@@ -107,7 +108,7 @@ const Admin = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="products" className="flex items-center space-x-2">
               <Package className="h-4 w-4" />
               <span>Products</span>
@@ -139,6 +140,10 @@ const Admin = () => {
             <TabsTrigger value="promotions" className="flex items-center space-x-2">
               <Megaphone className="h-4 w-4" />
               <span>Promotions</span>
+            </TabsTrigger>
+            <TabsTrigger value="support" className="flex items-center space-x-2">
+              <Headphones className="h-4 w-4" />
+              <span>Support</span>
             </TabsTrigger>
           </TabsList>
 
@@ -250,6 +255,20 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 <PromotionsManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="support">
+            <Card>
+              <CardHeader>
+                <CardTitle>Support Tickets</CardTitle>
+                <CardDescription>
+                  Manage customer support tickets and respond to inquiries
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SupportTicketsManager />
               </CardContent>
             </Card>
           </TabsContent>

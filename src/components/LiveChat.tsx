@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, X, Send, Bot, User, Maximize2, Minimize2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { MessageCircle, X, Send, Bot, User, Maximize2, Minimize2, Headphones } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -12,9 +14,17 @@ import { useToast } from '@/hooks/use-toast';
 interface ChatMessage {
   id: string;
   message: string;
-  sender: 'user' | 'support';
+  sender: 'user' | 'support' | 'ai';
   timestamp: Date;
   name?: string;
+  isTyping?: boolean;
+}
+
+interface TicketForm {
+  subject: string;
+  message: string;
+  customerName: string;
+  customerEmail: string;
 }
 
 const LiveChat = () => {
@@ -23,16 +33,25 @@ const LiveChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
-      message: 'Hello! Welcome to SmartHub Computers. How can I help you today?',
-      sender: 'support',
+      message: 'Hello! Welcome to SmartHub Computers. I\'m your AI assistant. How can I help you today? I can answer questions about our products, services, and help you with your shopping needs.',
+      sender: 'ai',
       timestamp: new Date(),
-      name: 'Support Team'
+      name: 'AI Assistant'
     }
   ]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isOnline, setIsOnline] = useState(true);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showTicketDialog, setShowTicketDialog] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const [ticketForm, setTicketForm] = useState<TicketForm>({
+    subject: '',
+    message: '',
+    customerName: user?.email?.split('@')[0] || '',
+    customerEmail: user?.email || ''
+  });
   const { toast } = useToast();
 
   const scrollToBottom = () => {
@@ -43,56 +62,38 @@ const LiveChat = () => {
     scrollToBottom();
   }, [messages]);
 
-  const generateContextualResponse = (userMessage: string): string => {
-    const message = userMessage.toLowerCase();
-    
-    // Product-related responses
-    if (message.includes('laptop') || message.includes('notebook')) {
-      return "We have a great selection of laptops including gaming laptops, business laptops, and ultrabooks. What type of laptop are you looking for? I can help you find the perfect one based on your needs and budget.";
+  useEffect(() => {
+    if (user) {
+      setTicketForm(prev => ({
+        ...prev,
+        customerName: user.email?.split('@')[0] || '',
+        customerEmail: user.email || ''
+      }));
     }
-    
-    if (message.includes('desktop') || message.includes('pc')) {
-      return "Our desktop computers range from budget-friendly options to high-performance gaming and workstation PCs. Are you looking for a specific type of desktop? I can recommend some based on your requirements.";
+  }, [user]);
+
+  const callAIChatbot = async (message: string) => {
+    try {
+      const response = await supabase.functions.invoke('ai-chat', {
+        body: {
+          action: 'chat',
+          message: message,
+          conversationHistory: conversationHistory.slice(-10) // Keep last 10 messages for context
+        }
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('AI chatbot error:', error);
+      return {
+        response: "I apologize, but I'm experiencing technical difficulties. Would you like me to create a support ticket so our human team can assist you?",
+        needsHumanSupport: true
+      };
     }
-    
-    if (message.includes('gaming')) {
-      return "Great choice! Our gaming section includes high-performance laptops, desktops, and components. We have systems with the latest graphics cards and processors. What's your gaming preference and budget range?";
-    }
-    
-    if (message.includes('price') || message.includes('cost') || message.includes('budget')) {
-      return "We offer competitive pricing across all our products. Our computers start from budget-friendly options around KES 30,000 to high-end systems. What's your budget range? I can suggest the best options for you.";
-    }
-    
-    if (message.includes('warranty') || message.includes('guarantee')) {
-      return "All our products come with manufacturer warranties. Most laptops and desktops have 1-2 year warranties, and we also offer extended warranty options. We provide full support for any warranty claims.";
-    }
-    
-    if (message.includes('delivery') || message.includes('shipping')) {
-      return "We offer delivery within Nairobi and nationwide shipping across Kenya. Nairobi deliveries are usually same-day or next-day, while countrywide shipping takes 2-3 business days. Delivery is free for orders above KES 50,000.";
-    }
-    
-    if (message.includes('payment') || message.includes('pay')) {
-      return "We accept various payment methods including M-Pesa, bank transfers, cash, and card payments. We also offer installment plans for purchases above KES 50,000. Would you like to know more about our payment options?";
-    }
-    
-    if (message.includes('location') || message.includes('address') || message.includes('visit')) {
-      return "You can visit our store at Koinange Street, Uniafric House Room 208, Nairobi. We're open Monday to Saturday, 9 AM to 6 PM. You can also call us at 0704144239 or email smarthub278@gmail.com.";
-    }
-    
-    if (message.includes('spec') || message.includes('specification')) {
-      return "I'd be happy to help you with specifications! Which product are you interested in? You can browse our full catalog with detailed specs on our products page, or I can help you find something specific.";
-    }
-    
-    // General responses
-    const generalResponses = [
-      "Thank you for your question! I'm here to help you find the perfect computer solution. Can you tell me more about what you're looking for?",
-      "That's a great question! Our team specializes in helping customers find the right technology. What specific product or service interests you?",
-      "I'd be happy to assist you with that. SmartHub Computers offers a wide range of products and services. How can I help you today?",
-      "Thanks for reaching out! We're committed to providing excellent customer service. What would you like to know more about?",
-      "I understand your inquiry. Let me help you find the best solution for your needs. Could you provide a bit more detail about what you're looking for?"
-    ];
-    
-    return generalResponses[Math.floor(Math.random() * generalResponses.length)];
   };
 
   const handleSendMessage = async () => {
@@ -107,38 +108,125 @@ const LiveChat = () => {
     };
 
     setMessages(prev => [...prev, newMessage]);
+    setConversationHistory(prev => [...prev, { role: 'user', content: currentMessage }]);
+    
     const messageToRespond = currentMessage;
     setCurrentMessage('');
+    setIsTyping(true);
 
-    // Save message to database
+    // Add typing indicator
+    const typingMessage: ChatMessage = {
+      id: 'typing',
+      message: '',
+      sender: 'ai',
+      timestamp: new Date(),
+      name: 'AI Assistant',
+      isTyping: true
+    };
+    setMessages(prev => [...prev, typingMessage]);
+
     try {
-      await supabase.from('messages').insert({
-        name: user?.email || 'Guest',
-        email: user?.email || 'guest@example.com',
-        message: messageToRespond,
-        subject: 'Live Chat Message'
-      });
+      // Call AI chatbot
+      const aiResponse = await callAIChatbot(messageToRespond);
+      
+      // Remove typing indicator
+      setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
+      setIsTyping(false);
 
-      // Generate contextual response
-      setTimeout(() => {
-        const contextualResponse = generateContextualResponse(messageToRespond);
-        
-        const supportMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          message: contextualResponse,
-          sender: 'support',
-          timestamp: new Date(),
-          name: 'Support Team'
-        };
-        
-        setMessages(prev => [...prev, supportMessage]);
-      }, 1500 + Math.random() * 2000);
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        message: aiResponse.response,
+        sender: 'ai',
+        timestamp: new Date(),
+        name: 'AI Assistant'
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
+      setConversationHistory(prev => [...prev, { role: 'assistant', content: aiResponse.response }]);
+
+      // If AI suggests human support, show ticket option
+      if (aiResponse.needsHumanSupport) {
+        setTimeout(() => {
+          const ticketSuggestion: ChatMessage = {
+            id: (Date.now() + 2).toString(),
+            message: "Would you like me to create a support ticket for you to get help from our human support team?",
+            sender: 'ai',
+            timestamp: new Date(),
+            name: 'AI Assistant'
+          };
+          setMessages(prev => [...prev, ticketSuggestion]);
+        }, 1000);
+      }
 
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error in chat:', error);
+      setMessages(prev => prev.filter(msg => msg.id !== 'typing'));
+      setIsTyping(false);
+      
       toast({
         title: "Error",
         description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCreateTicket = async () => {
+    if (!ticketForm.subject.trim() || !ticketForm.message.trim()) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const response = await supabase.functions.invoke('ai-chat', {
+        body: {
+          action: 'create_ticket',
+          customerName: ticketForm.customerName,
+          customerEmail: ticketForm.customerEmail,
+          subject: ticketForm.subject,
+          message: ticketForm.message,
+          userId: user?.id
+        }
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      toast({
+        title: "Support Ticket Created",
+        description: response.data.message,
+      });
+
+      // Add confirmation message to chat
+      const confirmationMessage: ChatMessage = {
+        id: Date.now().toString(),
+        message: `✅ Support ticket #${response.data.ticketId.slice(-8)} has been created successfully! Our team will respond within 24 hours to ${ticketForm.customerEmail}.`,
+        sender: 'ai',
+        timestamp: new Date(),
+        name: 'AI Assistant'
+      };
+
+      setMessages(prev => [...prev, confirmationMessage]);
+      setShowTicketDialog(false);
+      
+      // Reset form
+      setTicketForm({
+        subject: '',
+        message: '',
+        customerName: user?.email?.split('@')[0] || '',
+        customerEmail: user?.email || ''
+      });
+
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create support ticket. Please try again.",
         variant: "destructive"
       });
     }
@@ -180,21 +268,72 @@ const LiveChat = () => {
           <Card className={`${chatWidth} ${chatHeight} flex flex-col shadow-2xl ${isExpanded ? 'max-w-none' : ''}`}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="relative">
-                    <Bot className="h-6 w-6 text-primary" />
-                    <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${
-                      isOnline ? 'bg-green-500' : 'bg-gray-400'
-                    }`}></div>
+                  <div className="flex items-center space-x-2">
+                    <div className="relative">
+                      <Bot className="h-6 w-6 text-primary" />
+                      <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${
+                        isOnline ? 'bg-green-500' : 'bg-gray-400'
+                      }`}></div>
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">AI Support</CardTitle>
+                      <Badge variant={isOnline ? "default" : "secondary"} className="text-xs">
+                        {isOnline ? 'AI Online' : 'Offline'}
+                      </Badge>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-lg">Live Support</CardTitle>
-                    <Badge variant={isOnline ? "default" : "secondary"} className="text-xs">
-                      {isOnline ? 'Online' : 'Offline'}
-                    </Badge>
-                  </div>
-                </div>
                 <div className="flex items-center space-x-2">
+                  <Dialog open={showTicketDialog} onOpenChange={setShowTicketDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Headphones className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Create Support Ticket</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium">Your Name</label>
+                          <Input
+                            value={ticketForm.customerName}
+                            onChange={(e) => setTicketForm(prev => ({ ...prev, customerName: e.target.value }))}
+                            placeholder="Enter your name"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Email Address</label>
+                          <Input
+                            type="email"
+                            value={ticketForm.customerEmail}
+                            onChange={(e) => setTicketForm(prev => ({ ...prev, customerEmail: e.target.value }))}
+                            placeholder="Enter your email"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Subject</label>
+                          <Input
+                            value={ticketForm.subject}
+                            onChange={(e) => setTicketForm(prev => ({ ...prev, subject: e.target.value }))}
+                            placeholder="Brief description of your issue"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Message</label>
+                          <Textarea
+                            value={ticketForm.message}
+                            onChange={(e) => setTicketForm(prev => ({ ...prev, message: e.target.value }))}
+                            placeholder="Describe your issue in detail"
+                            rows={4}
+                          />
+                        </div>
+                        <Button onClick={handleCreateTicket} className="w-full">
+                          Create Support Ticket
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -239,10 +378,18 @@ const LiveChat = () => {
                           <Bot className="h-3 w-3" />
                         )}
                         <span className="text-xs font-medium">
-                          {message.name || (message.sender === 'user' ? 'You' : 'Support')}
+                          {message.name || (message.sender === 'user' ? 'You' : message.sender === 'ai' ? 'AI Assistant' : 'Support')}
                         </span>
                       </div>
-                      <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+                      {message.isTyping ? (
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-current rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap">{message.message}</p>
+                      )}
                       <p className="text-xs opacity-70 mt-1">
                         {message.timestamp.toLocaleTimeString([], { 
                           hour: '2-digit', 
@@ -274,7 +421,7 @@ const LiveChat = () => {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  We typically reply within a few minutes • Email: smarthub278@gmail.com
+                  AI-powered support • Need human help? Click the headphones icon above
                 </p>
               </div>
             </CardContent>

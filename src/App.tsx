@@ -13,6 +13,7 @@ import Admin from "./pages/Admin";
 import FlashSales from "./pages/FlashSales";
 import MyOrders from "./pages/MyOrders";
 import NotFound from "./pages/NotFound";
+import LiveChat from "./components/LiveChat";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/my-orders" element={<MyOrders />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <LiveChat />
           </BrowserRouter>
         </TooltipProvider>
       </CartProvider>
