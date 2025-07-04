@@ -19,8 +19,8 @@ const Index = () => {
       <main>
         <Hero />
         
-        {/* Admin Debug Section - Remove this after testing */}
-        {user && (
+        {/* Admin Debug Section - Only show to admin users */}
+        {user && isAdmin && (
           <div className="container mx-auto px-4 py-4 bg-blue-50 border border-blue-200 rounded-lg mb-8">
             <div className="text-center">
               <p className="text-sm text-blue-800 mb-2">
