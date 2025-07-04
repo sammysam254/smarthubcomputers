@@ -1,42 +1,28 @@
-import { useState } from 'react';
+
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, User, LogOut, ShoppingCart, Package, Home, Search } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Home, Package, Zap, User, Package2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { useCart } from '@/hooks/useCart';
-import { Badge } from '@/components/ui/badge';
 
-const MobileMenu = () => {
-  const [open, setOpen] = useState(false);
-  const { user, signOut } = useAuth();
-  const { totalItems } = useCart();
-  const navigate = useNavigate();
+interface MobileMenuProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
-    setOpen(false);
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    setOpen(false);
-  };
+const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
+  const { user } = useAuth();
 
   const menuItems = [
-    { icon: Home, label: 'Home', path: '/' },
-    { icon: Package, label: 'Products', path: '/products' },
-    { icon: Search, label: 'Search', path: '/products?search=' },
+    { href: '/', label: 'Home', icon: Home },
+    { href: '/products', label: 'Products', icon: Package },
+    { href: '/flash-sales', label: 'Flash Sales', icon: Zap },
+    ...(user ? [{ href: '/my-orders', label: 'My Orders', icon: Package2 }] : []),
   ];
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="md:hidden">
-          <Menu className="h-5 w-5" />
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="right" className="w-80">
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent side="left" className="w-80">
         <SheetHeader>
           <SheetTitle className="flex items-center space-x-2">
             <img 
@@ -44,107 +30,42 @@ const MobileMenu = () => {
               alt="SmartHub Computers" 
               className="h-8 w-auto"
             />
-            <span>Menu</span>
+            <span>SmartHub Computers</span>
           </SheetTitle>
         </SheetHeader>
         
-        <div className="mt-8 space-y-4">
-          {/* User Section */}
+        <nav className="flex flex-col space-y-4 mt-8">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={onClose}
+                className="flex items-center space-x-3 p-3 rounded-lg hover:bg-accent transition-colors"
+              >
+                <Icon className="h-5 w-5" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+          
           {user ? (
-            <div className="border-b pb-4">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                  <User className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">{user.email}</p>
-                  <p className="text-xs text-muted-foreground">Signed in</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleNavigation('/profile')}
-                  className="flex-1 justify-start"
-                >
-                  <User className="h-4 w-4 mr-2" />
-                  Profile
-                </Button>
-                <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4" />
-                </Button>
+            <div className="pt-4 border-t">
+              <div className="flex items-center space-x-3 p-3">
+                <User className="h-5 w-5" />
+                <span className="text-sm text-muted-foreground">{user.email}</span>
               </div>
             </div>
           ) : (
-            <div className="border-b pb-4">
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={() => handleNavigation('/auth')}
-              >
+            <Link to="/auth" onClick={onClose}>
+              <Button className="w-full">
+                <User className="h-4 w-4 mr-2" />
                 Sign In
               </Button>
-            </div>
+            </Link>
           )}
-
-          {/* Cart */}
-          <div className="border-b pb-4">
-            <Button 
-              variant="ghost" 
-              className="w-full justify-between" 
-              onClick={() => handleNavigation('/cart')}
-            >
-              <div className="flex items-center">
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Shopping Cart
-              </div>
-              {totalItems > 0 && (
-                <Badge variant="secondary">{totalItems}</Badge>
-              )}
-            </Button>
-          </div>
-
-          {/* Navigation */}
-          <div className="space-y-2">
-            <h3 className="font-medium text-sm text-muted-foreground px-3">Navigation</h3>
-            {menuItems.map((item) => (
-              <Button
-                key={item.path}
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={() => handleNavigation(item.path)}
-              >
-                <item.icon className="h-4 w-4 mr-2" />
-                {item.label}
-              </Button>
-            ))}
-          </div>
-
-          {/* Categories */}
-          <div className="space-y-2">
-            <h3 className="font-medium text-sm text-muted-foreground px-3">Categories</h3>
-            {[
-              { label: 'Laptops', path: '/products?category=laptops' },
-              { label: 'Desktops', path: '/products?category=desktops' },
-              { label: 'Components', path: '/products?category=components' },
-              { label: 'Gaming', path: '/products?category=gaming' },
-              { label: 'Peripherals', path: '/products?category=peripherals' },
-              { label: 'Audio', path: '/products?category=audio' },
-            ].map((category) => (
-              <Button
-                key={category.path}
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-sm"
-                onClick={() => handleNavigation(category.path)}
-              >
-                {category.label}
-              </Button>
-            ))}
-          </div>
-        </div>
+        </nav>
       </SheetContent>
     </Sheet>
   );

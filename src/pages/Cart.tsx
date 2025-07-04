@@ -1,68 +1,189 @@
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Plus, Minus, X, ShoppingBag, CreditCard, Smartphone } from 'lucide-react';
+import { toast } from 'sonner';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useToast } from '@/hooks/use-toast';
+
+interface ShippingAddress {
+  id: string;
+  name: string;
+  address_line_1: string;
+  address_line_2: string | null;
+  city: string;
+  county: string | null;
+  postal_code: string | null;
+  phone: string | null;
+}
 
 const Cart = () => {
-  const { items, updateQuantity, removeFromCart, totalPrice, clearCart } = useCart();
+  const { items, updateQuantity, removeFromCart, clearCart, getTotalPrice } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  
+  const [customerInfo, setCustomerInfo] = useState({
+    name: '',
+    email: '',
+    phone: '',
+  });
+  
+  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
+  const [customAddress, setCustomAddress] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('mpesa');
   const [mpesaMessage, setMpesaMessage] = useState('');
-  const [voucherCode, setVoucherCode] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Calculate shipping fee as 15% of total price
-  const shippingFee = Math.round(totalPrice * 0.15);
-  const taxAmount = Math.round(totalPrice * 0.16);
-  const finalTotal = totalPrice + shippingFee + taxAmount;
+  useEffect(() => {
+    if (user) {
+      fetchShippingAddresses();
+      // Pre-fill customer info if available
+      setCustomerInfo(prev => ({
+        ...prev,
+        email: user.email || '',
+      }));
+    }
+  }, [user]);
 
-  const handleCheckout = async () => {
+  const fetchShippingAddresses = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('shipping_addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('is_default', { ascending: false });
+
+      if (error) throw error;
+      setShippingAddresses(data || []);
+      
+      // Auto-select default address
+      const defaultAddress = data?.find(addr => addr.is_default);
+      if (defaultAddress) {
+        setSelectedAddressId(defaultAddress.id);
+      }
+    } catch (error) {
+      console.error('Error fetching shipping addresses:', error);
+    }
+  };
+
+  const subtotal = getTotalPrice();
+  const shippingFee = subtotal * 0.15; // 15% of subtotal
+  const total = subtotal + shippingFee;
+
+  const getShippingAddressText = () => {
+    if (selectedAddressId) {
+      const address = shippingAddresses.find(addr => addr.id === selectedAddressId);
+      if (address) {
+        return `${address.name}, ${address.address_line_1}${address.address_line_2 ? ', ' + address.address_line_2 : ''}, ${address.city}${address.county ? ', ' + address.county : ''}${address.postal_code ? ' ' + address.postal_code : ''}`;
+      }
+    }
+    return customAddress;
+  };
+
+  const handlePlaceOrder = async () => {
     if (!user) {
-      toast({
-        title: "Sign in required",
-        description: "Please sign in to proceed with checkout",
-      });
+      toast.error('Please sign in to place an order');
       navigate('/auth');
       return;
     }
 
-    if (paymentMethod === 'mpesa' && !mpesaMessage.trim()) {
-      toast({
-        title: "M-Pesa message required",
-        description: "Please paste your M-Pesa confirmation message",
-        variant: "destructive",
-      });
+    if (items.length === 0) {
+      toast.error('Your cart is empty');
       return;
     }
 
-    setIsCheckingOut(true);
-    
-    // Simulate checkout process
-    setTimeout(() => {
-      toast({
-        title: "Order placed successfully!",
-        description: paymentMethod === 'mpesa' 
-          ? "Your M-Pesa payment is being verified. You'll receive confirmation shortly."
-          : "Thank you for your purchase. You'll receive a confirmation email shortly.",
-      });
+    if (!customerInfo.name || !customerInfo.email) {
+      toast.error('Please fill in all customer information');
+      return;
+    }
+
+    const shippingAddress = getShippingAddressText();
+    if (!shippingAddress) {
+      toast.error('Please provide a shipping address');
+      return;
+    }
+
+    if (paymentMethod === 'mpesa' && !mpesaMessage.trim()) {
+      toast.error('Please provide M-Pesa transaction details');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Create orders for each item in cart
+      for (const item of items) {
+        const { error: orderError } = await supabase
+          .from('orders')
+          .insert({
+            user_id: user.id,
+            product_id: item.id,
+            quantity: item.quantity,
+            total_amount: (item.price * item.quantity) + (item.price * item.quantity * 0.15),
+            customer_name: customerInfo.name,
+            customer_email: customerInfo.email,
+            customer_phone: customerInfo.phone || null,
+            shipping_address: shippingAddress,
+            shipping_address_id: selectedAddressId || null,
+            payment_method: paymentMethod,
+            shipping_fee: item.price * item.quantity * 0.15,
+            status: 'pending'
+          });
+
+        if (orderError) throw orderError;
+
+        // If M-Pesa payment, create M-Pesa payment record
+        if (paymentMethod === 'mpesa') {
+          const { data: orderData } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('product_id', item.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (orderData) {
+            const { error: mpesaError } = await supabase
+              .from('mpesa_payments')
+              .insert({
+                order_id: orderData.id,
+                amount: (item.price * item.quantity) + (item.price * item.quantity * 0.15),
+                mpesa_message: mpesaMessage,
+                phone_number: customerInfo.phone || null,
+                status: 'pending'
+              });
+
+            if (mpesaError) throw mpesaError;
+          }
+        }
+      }
+
+      // Clear cart after successful order
       clearCart();
-      navigate('/');
-      setIsCheckingOut(false);
-    }, 2000);
+      
+      toast.success('Order placed successfully! You can track your orders in "My Orders" section.');
+      navigate('/my-orders');
+      
+    } catch (error) {
+      console.error('Error placing order:', error);
+      toast.error('Failed to place order. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (items.length === 0) {
@@ -71,12 +192,10 @@ const Cart = () => {
         <Header />
         <div className="container mx-auto px-4 py-16">
           <div className="text-center">
-            <ShoppingBag className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-            <h1 className="text-2xl font-bold mb-2">Your cart is empty</h1>
-            <p className="text-muted-foreground mb-8">
-              Looks like you haven't added any items to your cart yet.
-            </p>
-            <Button onClick={() => navigate('/products')} size="lg">
+            <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h2 className="text-2xl font-semibold mb-2">Your cart is empty</h2>
+            <p className="text-muted-foreground mb-6">Add some products to get started</p>
+            <Button onClick={() => navigate('/products')}>
               Continue Shopping
             </Button>
           </div>
@@ -91,178 +210,218 @@ const Cart = () => {
       <Header />
       
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Shopping Cart</h1>
-          <p className="text-muted-foreground">
-            {items.length} {items.length === 1 ? 'item' : 'items'} in your cart
-          </p>
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-8">
+        <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Cart Items */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold mb-4">Cart Items</h2>
             {items.map((item) => (
               <Card key={item.id}>
-                <CardContent className="p-6">
+                <CardContent className="p-4">
                   <div className="flex items-center space-x-4">
                     <img
-                      src={item.image || 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=200&h=200&fit=crop&crop=center'}
+                      src={item.image || 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=100&h=100&fit=crop&crop=center'}
                       alt={item.name}
-                      className="w-20 h-20 object-cover rounded-lg"
+                      className="w-16 h-16 object-cover rounded"
                     />
                     
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-1">{item.name}</h3>
-                      <p className="text-muted-foreground text-sm mb-2">
-                        KES {item.price.toLocaleString()} each
-                      </p>
-                      
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                          <Input
-                            type="number"
-                            value={item.quantity}
-                            onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
-                            className="w-16 text-center"
-                            min="1"
-                          />
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFromCart(item.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="text-right">
-                      <p className="font-bold text-lg">
-                        KES {(item.price * item.quantity).toLocaleString()}
+                      <h3 className="font-semibold">{item.name}</h3>
+                      <p className="text-primary font-bold">
+                        KES {item.price.toLocaleString()}
                       </p>
                     </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateQuantity(item.id, Math.max(0, item.quantity - 1))}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <span className="w-8 text-center">{item.quantity}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFromCart(item.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Order Summary */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-24">
+          {/* Checkout Form */}
+          <div className="space-y-6">
+            <Card>
               <CardHeader>
-                <CardTitle>Order Summary</CardTitle>
+                <CardTitle>Customer Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal</span>
-                    <span>KES {totalPrice.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Shipping (15%)</span>
-                    <span>KES {shippingFee.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tax (16%)</span>
-                    <span>KES {taxAmount.toLocaleString()}</span>
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Total</span>
-                  <span>KES {finalTotal.toLocaleString()}</span>
-                </div>
-
-                {/* Voucher Code */}
-                <div className="space-y-2">
-                  <Label htmlFor="voucher">Voucher Code</Label>
+                <div>
+                  <Label htmlFor="name">Full Name *</Label>
                   <Input
-                    id="voucher"
-                    placeholder="Enter voucher code"
-                    value={voucherCode}
-                    onChange={(e) => setVoucherCode(e.target.value)}
+                    id="name"
+                    value={customerInfo.name}
+                    onChange={(e) => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter your full name"
                   />
                 </div>
-
-                {/* Payment Method */}
-                <div className="space-y-3">
-                  <Label>Payment Method</Label>
-                  <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="mpesa" id="mpesa" />
-                      <Label htmlFor="mpesa">M-Pesa (0704144239)</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="cash" id="cash" />
-                      <Label htmlFor="cash">Cash on Delivery</Label>
-                    </div>
-                  </RadioGroup>
+                
+                <div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={customerInfo.email}
+                    onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="Enter your email"
+                  />
                 </div>
+                
+                <div>
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    value={customerInfo.phone}
+                    onChange={(e) => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="Enter your phone number"
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
-                {/* M-Pesa Message Input */}
-                {paymentMethod === 'mpesa' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="mpesa-message">M-Pesa Confirmation Message</Label>
-                    <textarea
-                      id="mpesa-message"
-                      placeholder="Paste your M-Pesa confirmation message here..."
-                      value={mpesaMessage}
-                      onChange={(e) => setMpesaMessage(e.target.value)}
-                      className="w-full p-2 border rounded-md resize-none h-20 text-sm"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Send money to 0704144239 and paste the confirmation message here
-                    </p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Shipping Address</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {shippingAddresses.length > 0 && (
+                  <div>
+                    <Label htmlFor="saved-address">Select Saved Address</Label>
+                    <Select value={selectedAddressId} onValueChange={setSelectedAddressId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a saved address" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Enter custom address</SelectItem>
+                        {shippingAddresses.map((address) => (
+                          <SelectItem key={address.id} value={address.id}>
+                            {address.name} - {address.address_line_1}, {address.city}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
                 
-                <div className="space-y-3">
-                  <Button 
-                    className="w-full" 
-                    size="lg"
-                    onClick={handleCheckout}
-                    disabled={isCheckingOut}
-                  >
-                    {isCheckingOut ? 'Processing...' : 'Proceed to Checkout'}
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => navigate('/products')}
-                  >
-                    Continue Shopping
-                  </Button>
+                {!selectedAddressId && (
+                  <div>
+                    <Label htmlFor="custom-address">Custom Address *</Label>
+                    <Textarea
+                      id="custom-address"
+                      value={customAddress}
+                      onChange={(e) => setCustomAddress(e.target.value)}
+                      placeholder="Enter your complete shipping address"
+                      rows={3}
+                    />
+                  </div>
+                )}
+                
+                {selectedAddressId && (
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-sm font-medium">Selected Address:</p>
+                    <p className="text-sm text-muted-foreground">{getShippingAddressText()}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Method</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select payment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mpesa">
+                      <div className="flex items-center space-x-2">
+                        <Smartphone className="h-4 w-4" />
+                        <span>M-Pesa (0704144239)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="cash_on_delivery">
+                      <div className="flex items-center space-x-2">
+                        <CreditCard className="h-4 w-4" />
+                        <span>Cash on Delivery</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {paymentMethod === 'mpesa' && (
+                  <div>
+                    <Label htmlFor="mpesa-details">M-Pesa Transaction Details *</Label>
+                    <Textarea
+                      id="mpesa-details"
+                      value={mpesaMessage}
+                      onChange={(e) => setMpesaMessage(e.target.value)}
+                      placeholder="Paste your M-Pesa confirmation message here..."
+                      rows={3}
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Send payment to: 0704144239, then paste the confirmation message above.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Order Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>KES {subtotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Shipping Fee (15%)</span>
+                    <span>KES {shippingFee.toLocaleString()}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between font-semibold text-lg">
+                    <span>Total</span>
+                    <span>KES {total.toLocaleString()}</span>
+                  </div>
                 </div>
                 
-                <div className="text-center">
-                  <Badge variant="secondary" className="text-xs">
-                    Free delivery on orders over KES 50,000
-                  </Badge>
-                </div>
+                <Button 
+                  className="w-full mt-6" 
+                  onClick={handlePlaceOrder}
+                  disabled={loading}
+                >
+                  {loading ? 'Placing Order...' : 'Place Order'}
+                </Button>
               </CardContent>
             </Card>
           </div>
