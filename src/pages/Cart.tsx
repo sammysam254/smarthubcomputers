@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
@@ -10,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Minus, X, ShoppingBag, CreditCard, Smartphone } from 'lucide-react';
+import { Plus, Minus, X, ShoppingBag, CreditCard, Smartphone, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -24,6 +25,16 @@ interface ShippingAddress {
   county: string | null;
   postal_code: string | null;
   phone: string | null;
+}
+
+interface Voucher {
+  id: string;
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  minimum_purchase_amount: number | null;
+  max_uses: number | null;
+  used_count: number | null;
 }
 
 const Cart = () => {
@@ -43,6 +54,15 @@ const Cart = () => {
   const [paymentMethod, setPaymentMethod] = useState('mpesa');
   const [mpesaMessage, setMpesaMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Voucher states
+  const [voucherCode, setVoucherCode] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
+  const [voucherDiscount, setVoucherDiscount] = useState(0);
+  const [voucherLoading, setVoucherLoading] = useState(false);
+  
+  // Shipping location
+  const [shippingLocation, setShippingLocation] = useState<'nairobi' | 'kenya'>('nairobi');
 
   useEffect(() => {
     if (user) {
@@ -72,15 +92,90 @@ const Cart = () => {
       const defaultAddress = data?.find(addr => addr.is_default);
       if (defaultAddress) {
         setSelectedAddressId(defaultAddress.id);
+        // Check if address is in Nairobi
+        if (defaultAddress.city.toLowerCase().includes('nairobi')) {
+          setShippingLocation('nairobi');
+        } else {
+          setShippingLocation('kenya');
+        }
       }
     } catch (error) {
       console.error('Error fetching shipping addresses:', error);
     }
   };
 
+  const applyVoucher = async () => {
+    if (!voucherCode.trim()) {
+      toast.error('Please enter a voucher code');
+      return;
+    }
+
+    setVoucherLoading(true);
+    try {
+      const { data: voucher, error } = await supabase
+        .from('vouchers')
+        .select('*')
+        .eq('code', voucherCode.toUpperCase())
+        .eq('active', true)
+        .single();
+
+      if (error) {
+        toast.error('Invalid voucher code');
+        return;
+      }
+
+      // Check if voucher has minimum purchase requirement
+      if (voucher.minimum_purchase_amount && subtotal < voucher.minimum_purchase_amount) {
+        toast.error(`Minimum purchase amount of KES ${voucher.minimum_purchase_amount.toLocaleString()} required`);
+        return;
+      }
+
+      // Check if voucher has usage limit
+      if (voucher.max_uses && voucher.used_count >= voucher.max_uses) {
+        toast.error('Voucher usage limit exceeded');
+        return;
+      }
+
+      // Check if voucher is within date range
+      const now = new Date();
+      if (voucher.start_date && new Date(voucher.start_date) > now) {
+        toast.error('Voucher is not yet active');
+        return;
+      }
+      if (voucher.end_date && new Date(voucher.end_date) < now) {
+        toast.error('Voucher has expired');
+        return;
+      }
+
+      // Calculate discount
+      let discount = 0;
+      if (voucher.discount_type === 'percentage') {
+        discount = (subtotal * voucher.discount_value) / 100;
+      } else if (voucher.discount_type === 'fixed') {
+        discount = Math.min(voucher.discount_value, subtotal);
+      }
+
+      setAppliedVoucher(voucher);
+      setVoucherDiscount(discount);
+      toast.success(`Voucher applied! Discount: KES ${discount.toLocaleString()}`);
+    } catch (error) {
+      console.error('Error applying voucher:', error);
+      toast.error('Failed to apply voucher');
+    } finally {
+      setVoucherLoading(false);
+    }
+  };
+
+  const removeVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherDiscount(0);
+    setVoucherCode('');
+    toast.success('Voucher removed');
+  };
+
   const subtotal = totalPrice;
-  const shippingFee = subtotal * 0.15; // 15% of subtotal
-  const total = subtotal + shippingFee;
+  const shippingFee = shippingLocation === 'nairobi' ? 500 : 700;
+  const total = subtotal + shippingFee - voucherDiscount;
 
   const getShippingAddressText = () => {
     if (selectedAddressId) {
@@ -141,18 +236,25 @@ const Cart = () => {
       for (const item of items) {
         console.log('Creating order for item:', item);
         
+        const itemTotal = (item.price * item.quantity);
+        const itemShippingFee = (itemTotal / subtotal) * shippingFee;
+        const itemVoucherDiscount = (itemTotal / subtotal) * voucherDiscount;
+        const itemFinalTotal = itemTotal + itemShippingFee - itemVoucherDiscount;
+        
         const orderData = {
           user_id: user.id,
           product_id: item.id,
           quantity: item.quantity,
-          total_amount: (item.price * item.quantity) + (item.price * item.quantity * 0.15),
+          total_amount: itemFinalTotal,
           customer_name: customerInfo.name,
           customer_email: customerInfo.email,
           customer_phone: customerInfo.phone || null,
           shipping_address: shippingAddress,
           shipping_address_id: selectedAddressId || null,
           payment_method: paymentMethod,
-          shipping_fee: item.price * item.quantity * 0.15,
+          shipping_fee: itemShippingFee,
+          voucher_id: appliedVoucher?.id || null,
+          voucher_discount: itemVoucherDiscount,
           status: 'pending'
         };
 
@@ -175,7 +277,7 @@ const Cart = () => {
         if (paymentMethod === 'mpesa' && insertedOrder) {
           const mpesaData = {
             order_id: insertedOrder.id,
-            amount: (item.price * item.quantity) + (item.price * item.quantity * 0.15),
+            amount: itemFinalTotal,
             mpesa_message: mpesaMessage,
             phone_number: customerInfo.phone || null,
             status: 'pending'
@@ -190,6 +292,32 @@ const Cart = () => {
           if (mpesaError) {
             console.error('M-Pesa payment creation error:', mpesaError);
             throw mpesaError;
+          }
+        }
+
+        // If voucher was used, record the usage
+        if (appliedVoucher && itemVoucherDiscount > 0) {
+          const { error: voucherUsageError } = await supabase
+            .from('voucher_usage')
+            .insert({
+              voucher_id: appliedVoucher.id,
+              user_id: user.id,
+              order_id: insertedOrder.id,
+              discount_amount: itemVoucherDiscount
+            });
+
+          if (voucherUsageError) {
+            console.error('Voucher usage error:', voucherUsageError);
+          }
+
+          // Update voucher used count
+          const { error: voucherUpdateError } = await supabase
+            .from('vouchers')
+            .update({ used_count: (appliedVoucher.used_count || 0) + 1 })
+            .eq('id', appliedVoucher.id);
+
+          if (voucherUpdateError) {
+            console.error('Voucher update error:', voucherUpdateError);
           }
         }
       }
@@ -336,6 +464,19 @@ const Cart = () => {
                 <CardTitle>Shipping Address</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="shipping-location">Shipping Location *</Label>
+                  <Select value={shippingLocation} onValueChange={(value: 'nairobi' | 'kenya') => setShippingLocation(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select shipping location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nairobi">Nairobi (KES 500)</SelectItem>
+                      <SelectItem value="kenya">Other parts of Kenya (KES 700)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {shippingAddresses.length > 0 && (
                   <div>
                     <Label htmlFor="saved-address">Select Saved Address</Label>
@@ -372,6 +513,44 @@ const Cart = () => {
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-sm font-medium">Selected Address:</p>
                     <p className="text-sm text-muted-foreground">{getShippingAddressText()}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Voucher Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Tag className="h-5 w-5" />
+                  <span>Voucher Code</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!appliedVoucher ? (
+                  <div className="flex space-x-2">
+                    <Input
+                      placeholder="Enter voucher code"
+                      value={voucherCode}
+                      onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                    />
+                    <Button 
+                      onClick={applyVoucher} 
+                      disabled={voucherLoading}
+                      variant="outline"
+                    >
+                      {voucherLoading ? 'Applying...' : 'Apply'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div>
+                      <p className="font-medium text-green-800">Voucher Applied: {appliedVoucher.code}</p>
+                      <p className="text-sm text-green-600">Discount: KES {voucherDiscount.toLocaleString()}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={removeVoucher}>
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                 )}
               </CardContent>
@@ -432,9 +611,15 @@ const Cart = () => {
                     <span>KES {subtotal.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Shipping Fee (15%)</span>
+                    <span>Shipping Fee ({shippingLocation === 'nairobi' ? 'Nairobi' : 'Kenya'})</span>
                     <span>KES {shippingFee.toLocaleString()}</span>
                   </div>
+                  {voucherDiscount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Voucher Discount</span>
+                      <span>-KES {voucherDiscount.toLocaleString()}</span>
+                    </div>
+                  )}
                   <Separator />
                   <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
