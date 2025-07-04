@@ -28,7 +28,7 @@ interface ShippingAddress {
 }
 
 const Cart = () => {
-  const { items, updateQuantity, removeFromCart, clearCart, getTotalPrice } = useCart();
+  const { items, updateQuantity, removeFromCart, clearCart, totalPrice } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -79,7 +79,7 @@ const Cart = () => {
     }
   };
 
-  const subtotal = getTotalPrice();
+  const subtotal = totalPrice;
   const shippingFee = subtotal * 0.15; // 15% of subtotal
   const total = subtotal + shippingFee;
 
