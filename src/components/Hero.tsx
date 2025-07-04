@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Monitor, Cpu, HardDrive } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import heroImage from "@/assets/hero-computers.jpg";
 
 const Hero = () => {
+  const navigate = useNavigate();
+  
   return (
     <section className="relative bg-gradient-to-br from-background via-secondary/20 to-accent/10 py-20">
       <div className="container mx-auto px-4">
@@ -24,11 +27,20 @@ const Hero = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button variant="hero" size="lg" className="group">
+              <Button 
+                variant="hero" 
+                size="lg" 
+                className="group"
+                onClick={() => navigate('/products')}
+              >
                 Shop Now
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button variant="outline" size="lg">
+              <Button 
+                variant="outline" 
+                size="lg"
+                onClick={() => navigate('/products')}
+              >
                 View Catalog
               </Button>
             </div>

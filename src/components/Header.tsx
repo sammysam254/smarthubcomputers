@@ -1,22 +1,34 @@
-import { ShoppingCart, Search, Menu, User, LogOut } from "lucide-react";
+import { ShoppingCart, Search, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/hooks/useCart";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import MobileMenu from "@/components/MobileMenu";
 
 const Header = () => {
   const { user, signOut } = useAuth();
+  const { totalItems } = useCart();
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
   };
 
   return (
@@ -24,7 +36,7 @@ const Header = () => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate('/')}>
             <img 
               src="/lovable-uploads/e794c35d-09b9-447c-9ad8-265176240bde.png" 
               alt="SmartHub Computers" 
@@ -33,15 +45,17 @@ const Header = () => {
           </div>
 
           {/* Search Bar */}
-          <div className="hidden md:flex flex-1 max-w-xl mx-8">
+          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl mx-8">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input 
                 placeholder="Search computers, laptops, accessories..." 
                 className="pl-10 pr-4 w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-          </div>
+          </form>
 
           {/* Actions */}
           <div className="flex items-center space-x-4">
@@ -68,29 +82,36 @@ const Header = () => {
               </Button>
             )}
             
-            <Button variant="ghost" size="icon" className="relative">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="relative"
+              onClick={() => navigate('/cart')}
+            >
               <ShoppingCart className="h-5 w-5" />
-              <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center text-xs bg-primary">
-                0
-              </Badge>
+              {totalItems > 0 && (
+                <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center text-xs bg-primary">
+                  {totalItems}
+                </Badge>
+              )}
             </Button>
 
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <Menu className="h-5 w-5" />
-            </Button>
+            <MobileMenu />
           </div>
         </div>
 
         {/* Mobile Search */}
-        <div className="md:hidden mt-4">
+        <form onSubmit={handleSearch} className="md:hidden mt-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input 
               placeholder="Search products..." 
               className="pl-10 pr-4 w-full"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-        </div>
+        </form>
       </div>
     </header>
   );

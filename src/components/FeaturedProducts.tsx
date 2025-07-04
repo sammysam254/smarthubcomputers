@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Star, ShoppingCart, Eye } from "lucide-react";
+import { useCart } from "@/hooks/useCart";
+import { useNavigate } from "react-router-dom";
 
 const products = [
   {
@@ -51,6 +53,18 @@ const products = [
 ];
 
 const FeaturedProducts = () => {
+  const { addToCart } = useCart();
+  const navigate = useNavigate();
+
+  const handleAddToCart = (product: typeof products[0]) => {
+    addToCart({
+      id: product.id.toString(),
+      name: product.name,
+      price: product.price,
+      image: product.image,
+    });
+  };
+
   return (
     <section className="py-16 bg-secondary/30">
       <div className="container mx-auto px-4">
@@ -82,10 +96,16 @@ const FeaturedProducts = () => {
 
                     {/* Hover Actions */}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2">
-                      <Button variant="secondary" size="sm" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="secondary" size="sm" onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/products');
+                      }}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="tech" size="sm" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="tech" size="sm" onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product);
+                      }}>
                         <ShoppingCart className="h-4 w-4" />
                       </Button>
                     </div>
@@ -123,7 +143,10 @@ const FeaturedProducts = () => {
                       )}
                     </div>
 
-                    <Button variant="cart" className="w-full" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="cart" className="w-full" onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddToCart(product);
+                    }}>
                       Add to Cart
                     </Button>
                   </div>
@@ -134,7 +157,7 @@ const FeaturedProducts = () => {
         </div>
 
         <div className="text-center mt-12">
-          <Button variant="outline" size="lg">
+          <Button variant="outline" size="lg" onClick={() => navigate('/products')}>
             View All Products
           </Button>
         </div>

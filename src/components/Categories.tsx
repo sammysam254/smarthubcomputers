@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Laptop, Monitor, Cpu, Headphones, Keyboard, Mouse } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const categories = [
   {
@@ -8,46 +9,54 @@ const categories = [
     title: "Laptops",
     description: "High-performance laptops for work and gaming",
     count: "150+ Models",
-    gradient: "from-blue-500 to-blue-600"
+    gradient: "from-blue-500 to-blue-600",
+    category: "laptops"
   },
   {
     icon: Monitor,
     title: "Desktops",
     description: "Custom built and pre-configured desktop PCs",
     count: "200+ Builds",
-    gradient: "from-purple-500 to-purple-600"
+    gradient: "from-purple-500 to-purple-600",
+    category: "desktops"
   },
   {
     icon: Cpu,
     title: "Components",
     description: "CPUs, GPUs, RAM, and motherboards",
     count: "500+ Parts",
-    gradient: "from-green-500 to-green-600"
+    gradient: "from-green-500 to-green-600",
+    category: "components"
   },
   {
     icon: Headphones,
     title: "Audio",
     description: "Headphones, speakers, and audio equipment",
     count: "100+ Products",
-    gradient: "from-orange-500 to-orange-600"
+    gradient: "from-orange-500 to-orange-600",
+    category: "audio"
   },
   {
     icon: Keyboard,
     title: "Peripherals",
     description: "Keyboards, mice, and gaming accessories",
     count: "300+ Items",
-    gradient: "from-red-500 to-red-600"
+    gradient: "from-red-500 to-red-600",
+    category: "peripherals"
   },
   {
     icon: Mouse,
     title: "Gaming",
     description: "Gaming gear and specialized equipment",
     count: "250+ Products",
-    gradient: "from-indigo-500 to-indigo-600"
+    gradient: "from-indigo-500 to-indigo-600",
+    category: "gaming"
   }
 ];
 
 const Categories = () => {
+  const navigate = useNavigate();
+  
   return (
     <section className="py-16 bg-background">
       <div className="container mx-auto px-4">
@@ -67,6 +76,7 @@ const Categories = () => {
               <button 
                 key={index} 
                 className="group hover:shadow-card transition-all duration-300 hover:-translate-y-1 cursor-pointer w-full text-left"
+                onClick={() => navigate(`/products?category=${category.category}`)}
               >
                 <Card className="border-border/50 hover:border-primary/30 h-full">
                   <CardContent className="p-6">
@@ -91,6 +101,10 @@ const Categories = () => {
                         variant="tech" 
                         size="sm" 
                         className="w-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/products?category=${category.category}`);
+                        }}
                       >
                         Browse {category.title}
                       </Button>
