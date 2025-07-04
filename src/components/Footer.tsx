@@ -1,8 +1,43 @@
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Facebook, Twitter, Instagram, Mail, Phone, MapPin } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Footer = () => {
+  const navigate = useNavigate();
+
+  const handleQuickLinkClick = (link: string) => {
+    switch (link) {
+      case "Laptops":
+      case "Desktops":
+      case "Components":
+      case "Gaming":
+      case "Accessories":
+        navigate(`/products?category=${link.toLowerCase()}`);
+        break;
+      case "Support":
+        window.location.href = "mailto:smarthub278@gmail.com";
+        break;
+      default:
+        navigate('/products');
+    }
+  };
+
+  const handleCustomerServiceClick = (link: string) => {
+    switch (link) {
+      case "Contact Us":
+        window.location.href = "mailto:smarthub278@gmail.com";
+        break;
+      case "Live Chat":
+        // The live chat is already visible on all pages
+        break;
+      default:
+        // For other links, you can add specific functionality later
+        break;
+    }
+  };
+
   return (
     <footer className="bg-foreground text-background py-16">
       <div className="container mx-auto px-4">
@@ -39,7 +74,10 @@ const Footer = () => {
             <ul className="space-y-2">
               {["Laptops", "Desktops", "Components", "Gaming", "Accessories", "Support"].map((link) => (
                 <li key={link}>
-                  <button className="text-background/80 hover:text-background transition-colors text-sm text-left">
+                  <button 
+                    onClick={() => handleQuickLinkClick(link)}
+                    className="text-background/80 hover:text-background transition-colors text-sm text-left"
+                  >
                     {link}
                   </button>
                 </li>
@@ -53,7 +91,10 @@ const Footer = () => {
             <ul className="space-y-2">
               {["Contact Us", "Shipping Info", "Returns", "Warranty", "FAQ", "Live Chat"].map((link) => (
                 <li key={link}>
-                  <button className="text-background/80 hover:text-background transition-colors text-sm text-left">
+                  <button 
+                    onClick={() => handleCustomerServiceClick(link)}
+                    className="text-background/80 hover:text-background transition-colors text-sm text-left"
+                  >
                     {link}
                   </button>
                 </li>
@@ -71,7 +112,7 @@ const Footer = () => {
               </div>
               <div className="flex items-center space-x-2 text-sm text-background/80">
                 <Mail className="h-4 w-4" />
-                <span>support@smarthub.com</span>
+                <span>smarthub278@gmail.com</span>
               </div>
               <div className="flex items-center space-x-2 text-sm text-background/80">
                 <MapPin className="h-4 w-4" />
