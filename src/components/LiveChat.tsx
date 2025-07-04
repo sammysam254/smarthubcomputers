@@ -161,10 +161,58 @@ const LiveChat = () => {
     };
 
     setMessages(prev => [...prev, newMessage]);
-    setConversationHistory(prev => [...prev, { role: 'user', content: currentMessage }]);
     
     const messageToRespond = currentMessage;
     setCurrentMessage('');
+
+    // Check if user has active tickets - if so, add message to ticket instead of AI chat
+    if (activeTicketIds.length > 0) {
+      try {
+        // Add message to the most recent active ticket
+        const latestTicketId = activeTicketIds[activeTicketIds.length - 1];
+        
+        const { error } = await supabase
+          .from('support_ticket_messages')
+          .insert({
+            ticket_id: latestTicketId,
+            sender_id: user?.id,
+            sender_name: user?.email?.split('@')[0] || 'Customer',
+            sender_email: user?.email || 'unknown@email.com',
+            message: messageToRespond,
+            is_internal: false
+          });
+
+        if (error) throw error;
+
+        // Add a confirmation message
+        const confirmationMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          message: "💌 Your message has been added to your support ticket. Our team will see it and respond accordingly.",
+          sender: 'ai',
+          timestamp: new Date(),
+          name: 'AI Assistant'
+        };
+
+        setMessages(prev => [...prev, confirmationMessage]);
+
+        toast({
+          title: "Message Sent",
+          description: "Your message has been added to your support ticket.",
+        });
+
+      } catch (error) {
+        console.error('Error sending message to ticket:', error);
+        toast({
+          title: "Error",
+          description: "Failed to send message to support ticket.",
+          variant: "destructive"
+        });
+      }
+      return;
+    }
+
+    // Continue with AI chat if no active tickets
+    setConversationHistory(prev => [...prev, { role: 'user', content: messageToRespond }]);
     setIsTyping(true);
 
     // Add typing indicator
