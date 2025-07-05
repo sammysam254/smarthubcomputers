@@ -688,8 +688,8 @@ const Cart = () => {
                     </SelectItem>
                     <SelectItem value="ncba_loop">
                       <div className="flex items-center space-x-2">
-                        <CreditCard className="h-4 w-4" />
-                        <span>NCBA Loop Paybill</span>
+                        <Smartphone className="h-4 w-4" />
+                        <span>M-Pesa</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="cash_on_delivery">
