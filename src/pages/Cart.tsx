@@ -54,6 +54,9 @@ const Cart = () => {
   const [paymentMethod, setPaymentMethod] = useState('mpesa');
   const [mpesaMessage, setMpesaMessage] = useState('');
   const [ncbaLoopMessage, setNcbaLoopMessage] = useState('');
+  const [stkPushLoading, setStkPushLoading] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<string>('');
+  const [checkoutRequestId, setCheckoutRequestId] = useState<string>('');
   const [loading, setLoading] = useState(false);
   
   // Voucher states
@@ -75,6 +78,42 @@ const Cart = () => {
       }));
     }
   }, [user]);
+
+  // Listen for payment status updates
+  useEffect(() => {
+    if (!checkoutRequestId) return;
+
+    const channel = supabase
+      .channel('ncba-loop-payment-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'ncba_loop_payments',
+          filter: `account_number=eq.${checkoutRequestId}`
+        },
+        (payload) => {
+          console.log('Payment status update:', payload);
+          const newStatus = payload.new.status;
+          setPaymentStatus(newStatus);
+          
+          if (newStatus === 'confirmed') {
+            toast.success('Payment confirmed! Your order has been placed successfully.');
+            clearCart();
+            navigate('/my-orders');
+          } else if (newStatus === 'failed') {
+            toast.error('Payment failed. Please try again.');
+            setStkPushLoading(false);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [checkoutRequestId]);
 
   const fetchShippingAddresses = async () => {
     if (!user) return;
@@ -102,6 +141,49 @@ const Cart = () => {
       }
     } catch (error) {
       console.error('Error fetching shipping addresses:', error);
+    }
+  };
+
+  const initiateSTKPush = async (orderId: string, phoneNumber: string, amount: number) => {
+    try {
+      setStkPushLoading(true);
+      setPaymentStatus('processing');
+      
+      if (!phoneNumber) {
+        toast.error('Phone number is required for NCBA Loop payment');
+        return;
+      }
+
+      console.log('Initiating STK Push:', { orderId, phoneNumber, amount });
+
+      const { data, error } = await supabase.functions.invoke('mpesa-stk-push', {
+        body: {
+          order_id: orderId,
+          phone_number: phoneNumber,
+          amount: amount,
+          account_reference: `Order-${orderId.slice(-8)}`,
+          transaction_desc: `Payment for SmartHub Order ${orderId.slice(-8)}`
+        }
+      });
+
+      if (error) {
+        console.error('STK Push error:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        setCheckoutRequestId(data.CheckoutRequestID);
+        setPaymentStatus('stk_sent');
+        toast.success('Payment request sent to your phone. Please enter your M-Pesa PIN to complete the payment.');
+      } else {
+        throw new Error(data?.error || 'Failed to send payment request');
+      }
+
+    } catch (error) {
+      console.error('STK Push error:', error);
+      toast.error('Failed to send payment request. Please try again.');
+      setStkPushLoading(false);
+      setPaymentStatus('');
     }
   };
 
@@ -222,8 +304,8 @@ const Cart = () => {
       return;
     }
 
-    if (paymentMethod === 'ncba_loop' && !ncbaLoopMessage.trim()) {
-      toast.error('Please provide NCBA Loop paybill transaction details');
+    if (paymentMethod === 'ncba_loop' && !customerInfo.phone) {
+      toast.error('Phone number is required for NCBA Loop payment');
       return;
     }
 
@@ -301,12 +383,12 @@ const Cart = () => {
           }
         }
 
-        // If NCBA Loop payment, create NCBA Loop payment record
+        // If NCBA Loop payment, create NCBA Loop payment record and initiate STK push
         if (paymentMethod === 'ncba_loop' && insertedOrder) {
           const ncbaLoopData = {
             order_id: insertedOrder.id,
             amount: itemFinalTotal,
-            ncba_loop_message: ncbaLoopMessage,
+            ncba_loop_message: `STK Push initiated for Order ${insertedOrder.id}`,
             phone_number: customerInfo.phone || null,
             status: 'pending'
           };
@@ -321,6 +403,10 @@ const Cart = () => {
             console.error('NCBA Loop payment creation error:', ncbaLoopError);
             throw ncbaLoopError;
           }
+
+          // Initiate STK push after creating the payment record
+          await initiateSTKPush(insertedOrder.id, customerInfo.phone!, itemFinalTotal);
+          return; // Exit early to prevent showing regular success message
         }
 
         // If voucher was used, record the usage
@@ -632,25 +718,37 @@ const Cart = () => {
                 )}
 
                 {paymentMethod === 'ncba_loop' && (
-                  <div>
-                    <Label htmlFor="ncba-loop-details">NCBA Loop Paybill Transaction Details *</Label>
-                    <Textarea
-                      id="ncba-loop-details"
-                      value={ncbaLoopMessage}
-                      onChange={(e) => setNcbaLoopMessage(e.target.value)}
-                      placeholder="Paste your NCBA Loop paybill confirmation message here..."
-                      rows={3}
-                    />
-                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm font-medium text-blue-800 mb-1">NCBA Loop Paybill Instructions:</p>
+                  <div className="space-y-4">
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm font-medium text-blue-800 mb-1">NCBA Loop STK Push Payment</p>
                       <p className="text-sm text-blue-700">
-                        1. Go to M-Pesa → Pay Bill<br/>
-                        2. Business Number: [Your NCBA Loop Paybill Number]<br/>
-                        3. Account Number: [Your Order Reference]<br/>
-                        4. Amount: KES {total.toLocaleString()}<br/>
-                        5. Paste the confirmation message above
+                        • Click "Place Order" below to receive an STK push on your phone<br/>
+                        • Enter your M-Pesa PIN to complete the payment<br/>
+                        • Your order will be automatically confirmed once payment is received
                       </p>
                     </div>
+                    
+                    {paymentStatus && (
+                      <div className={`p-3 rounded-lg border ${
+                        paymentStatus === 'confirmed' ? 'bg-green-50 border-green-200' :
+                        paymentStatus === 'failed' ? 'bg-red-50 border-red-200' :
+                        'bg-yellow-50 border-yellow-200'
+                      }`}>
+                        <p className={`text-sm font-medium ${
+                          paymentStatus === 'confirmed' ? 'text-green-800' :
+                          paymentStatus === 'failed' ? 'text-red-800' :
+                          'text-yellow-800'
+                        }`}>
+                          Payment Status: {
+                            paymentStatus === 'processing' ? 'Processing your order...' :
+                            paymentStatus === 'stk_sent' ? 'STK push sent! Check your phone and enter PIN' :
+                            paymentStatus === 'confirmed' ? 'Payment confirmed! Order placed successfully' :
+                            paymentStatus === 'failed' ? 'Payment failed. Please try again' :
+                            paymentStatus
+                          }
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
