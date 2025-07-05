@@ -44,7 +44,7 @@ BUSINESS INFO:
 - Hours: Monday to Saturday, 9 AM to 6 PM
 - Phone: 0704144239
 - Email: smarthub278@gmail.com
-- Website: smarthubcomputers.lovable.app
+- Website: https://smarthubcomputers.com
 - Website features: Products catalog, flash sales, vouchers, user accounts, cart system
 
 PRICING & PAYMENT:
@@ -66,11 +66,11 @@ WARRANTIES & SUPPORT:
 - Technical support and customer service
 
 STOCK & PRODUCT QUERIES:
-- For current stock availability and detailed product information, refer customers to visit smarthubcomputers.lovable.app
+- For current stock availability and detailed product information, refer customers to visit https://smarthubcomputers.com
 - The website has the most up-to-date inventory and product specifications
 - Customers can browse categories, compare products, and check real-time availability
 
-Act as a helpful, knowledgeable customer service representative. When customers ask about stock or specific product availability, direct them to check smarthubcomputers.lovable.app for the most current information. If customers need human assistance, inform them you can create a support ticket for them.
+Act as a helpful, knowledgeable customer service representative. When customers ask about stock or specific product availability, direct them to check https://smarthubcomputers.com for the most current information. If customers need human assistance, inform them you can create a support ticket for them.
 `;
 
 serve(async (req) => {
