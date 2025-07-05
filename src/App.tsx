@@ -14,6 +14,7 @@ import FlashSales from "./pages/FlashSales";
 import MyOrders from "./pages/MyOrders";
 import NotFound from "./pages/NotFound";
 import LiveChat from "./components/LiveChat";
+import WhatsAppChat from "./components/WhatsAppChat";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
             <LiveChat />
+            <WhatsAppChat />
           </BrowserRouter>
         </TooltipProvider>
       </CartProvider>
