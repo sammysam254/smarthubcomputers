@@ -301,6 +301,28 @@ const Cart = () => {
           }
         }
 
+        // If NCBA Loop payment, create NCBA Loop payment record
+        if (paymentMethod === 'ncba_loop' && insertedOrder) {
+          const ncbaLoopData = {
+            order_id: insertedOrder.id,
+            amount: itemFinalTotal,
+            ncba_loop_message: ncbaLoopMessage,
+            phone_number: customerInfo.phone || null,
+            status: 'pending'
+          };
+
+          console.log('Creating NCBA Loop payment record:', ncbaLoopData);
+
+          const { error: ncbaLoopError } = await supabase
+            .from('ncba_loop_payments')
+            .insert(ncbaLoopData);
+
+          if (ncbaLoopError) {
+            console.error('NCBA Loop payment creation error:', ncbaLoopError);
+            throw ncbaLoopError;
+          }
+        }
+
         // If voucher was used, record the usage
         if (appliedVoucher && itemVoucherDiscount > 0) {
           const { error: voucherUsageError } = await supabase

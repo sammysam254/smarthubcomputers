@@ -209,6 +209,59 @@ export type Database = {
           },
         ]
       }
+      ncba_loop_payments: {
+        Row: {
+          account_number: string | null
+          amount: number
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          ncba_loop_message: string
+          order_id: string
+          paybill_number: string | null
+          phone_number: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          amount: number
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          ncba_loop_message: string
+          order_id: string
+          paybill_number?: string | null
+          phone_number?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string | null
+          amount?: number
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          ncba_loop_message?: string
+          order_id?: string
+          paybill_number?: string | null
+          phone_number?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncba_loop_payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string

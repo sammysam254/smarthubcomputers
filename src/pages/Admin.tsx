@@ -6,7 +6,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LogOut, Package, ShoppingCart, MessageSquare, Users, Megaphone, Zap, Ticket, Smartphone, Headphones } from 'lucide-react';
+import { LogOut, Package, ShoppingCart, MessageSquare, Users, Megaphone, Zap, Ticket, Smartphone, Headphones, CreditCard } from 'lucide-react';
 import ProductsManager from '@/components/admin/ProductsManager';
 import OrdersManager from '@/components/admin/OrdersManager';
 import MessagesManager from '@/components/admin/MessagesManager';
@@ -15,6 +15,7 @@ import PromotionsManager from '@/components/admin/PromotionsManager';
 import FlashSalesManager from '@/components/admin/FlashSalesManager';
 import VouchersManager from '@/components/admin/VouchersManager';
 import MpesaPaymentsManager from '@/components/admin/MpesaPaymentsManager';
+import NcbaLoopPaymentsManager from '@/components/admin/NcbaLoopPaymentsManager';
 import SupportTicketsManager from '@/components/admin/SupportTicketsManager';
 import { toast } from 'sonner';
 
@@ -108,7 +109,7 @@ const Admin = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="products" className="flex items-center space-x-2">
               <Package className="h-4 w-4" />
               <span>Products</span>
@@ -128,6 +129,10 @@ const Admin = () => {
             <TabsTrigger value="mpesa" className="flex items-center space-x-2">
               <Smartphone className="h-4 w-4" />
               <span>M-Pesa</span>
+            </TabsTrigger>
+            <TabsTrigger value="ncba-loop" className="flex items-center space-x-2">
+              <CreditCard className="h-4 w-4" />
+              <span>NCBA Loop</span>
             </TabsTrigger>
             <TabsTrigger value="messages" className="flex items-center space-x-2">
               <MessageSquare className="h-4 w-4" />
@@ -213,6 +218,20 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 <MpesaPaymentsManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="ncba-loop">
+            <Card>
+              <CardHeader>
+                <CardTitle>NCBA Loop Payment Management</CardTitle>
+                <CardDescription>
+                  Review and confirm NCBA Loop paybill payments from customers
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <NcbaLoopPaymentsManager />
               </CardContent>
             </Card>
           </TabsContent>
