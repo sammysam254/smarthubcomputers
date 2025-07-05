@@ -53,6 +53,7 @@ const Cart = () => {
   const [customAddress, setCustomAddress] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('mpesa');
   const [mpesaMessage, setMpesaMessage] = useState('');
+  const [ncbaLoopMessage, setNcbaLoopMessage] = useState('');
   const [loading, setLoading] = useState(false);
   
   // Voucher states
@@ -218,6 +219,11 @@ const Cart = () => {
 
     if (paymentMethod === 'mpesa' && !mpesaMessage.trim()) {
       toast.error('Please provide M-Pesa transaction details');
+      return;
+    }
+
+    if (paymentMethod === 'ncba_loop' && !ncbaLoopMessage.trim()) {
+      toast.error('Please provide NCBA Loop paybill transaction details');
       return;
     }
 
@@ -572,6 +578,12 @@ const Cart = () => {
                         <span>M-Pesa (0704144239)</span>
                       </div>
                     </SelectItem>
+                    <SelectItem value="ncba_loop">
+                      <div className="flex items-center space-x-2">
+                        <CreditCard className="h-4 w-4" />
+                        <span>NCBA Loop Paybill</span>
+                      </div>
+                    </SelectItem>
                     <SelectItem value="cash_on_delivery">
                       <div className="flex items-center space-x-2">
                         <CreditCard className="h-4 w-4" />
@@ -594,6 +606,29 @@ const Cart = () => {
                     <p className="text-sm text-muted-foreground mt-1">
                       Send payment to: 0704144239, then paste the confirmation message above.
                     </p>
+                  </div>
+                )}
+
+                {paymentMethod === 'ncba_loop' && (
+                  <div>
+                    <Label htmlFor="ncba-loop-details">NCBA Loop Paybill Transaction Details *</Label>
+                    <Textarea
+                      id="ncba-loop-details"
+                      value={ncbaLoopMessage}
+                      onChange={(e) => setNcbaLoopMessage(e.target.value)}
+                      placeholder="Paste your NCBA Loop paybill confirmation message here..."
+                      rows={3}
+                    />
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm font-medium text-blue-800 mb-1">NCBA Loop Paybill Instructions:</p>
+                      <p className="text-sm text-blue-700">
+                        1. Go to M-Pesa → Pay Bill<br/>
+                        2. Business Number: [Your NCBA Loop Paybill Number]<br/>
+                        3. Account Number: [Your Order Reference]<br/>
+                        4. Amount: KES {total.toLocaleString()}<br/>
+                        5. Paste the confirmation message above
+                      </p>
+                    </div>
                   </div>
                 )}
               </CardContent>
