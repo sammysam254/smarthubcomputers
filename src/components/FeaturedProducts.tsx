@@ -7,48 +7,6 @@ import { useNavigate } from "react-router-dom";
 
 const products = [
   {
-    id: "macbook-m3",
-    name: "MacBook Pro M3 16-inch",
-    price: 2499,
-    originalPrice: 2699,
-    rating: 4.9,
-    reviews: 128,
-    image: "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400&h=300&fit=crop&crop=center",
-    badge: "Best Seller",
-    badgeColor: "bg-green-500"
-  },
-  {
-    id: "gaming-pc-4080",
-    name: "Gaming PC RTX 4080 Build",
-    price: 1899,
-    originalPrice: null,
-    rating: 4.8,
-    reviews: 89,
-    image: "https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=400&h=300&fit=crop&crop=center",
-    badge: "New",
-    badgeColor: "bg-blue-500"
-  },
-  {
-    id: "dell-xps-13",
-    name: "Dell XPS 13 Ultrabook",
-    price: 1299,
-    originalPrice: 1499,
-    rating: 4.7,
-    reviews: 156,
-    image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400&h=300&fit=crop&crop=center",
-    badge: "Sale",
-    badgeColor: "bg-red-500"
-  },
-  {
-    id: "ipad-pro-m2",
-    name: "iPad Pro 12.9-inch M2",
-    price: 1099,
-    originalPrice: null,
-    rating: 4.8,
-    reviews: 92,
-    image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&h=300&fit=crop&crop=center",
-    badge: "Popular",
-    badgeColor: "bg-purple-500"
   }
 ];
 
