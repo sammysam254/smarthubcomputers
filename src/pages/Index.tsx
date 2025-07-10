@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -25,10 +24,20 @@ const Index = () => {
   const { user } = useAuth();
   const { isAdmin, fetchPromotions } = useAdmin();
   const [activePromotions, setActivePromotions] = useState<Promotion[]>([]);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
     loadActivePromotions();
   }, []);
+
+  useEffect(() => {
+    if (activePromotions.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % activePromotions.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [activePromotions.length]);
 
   const loadActivePromotions = async () => {
     try {
@@ -38,6 +47,18 @@ const Index = () => {
     } catch (error) {
       console.error('Error loading promotions:', error);
     }
+  };
+
+  const goToSlide = (index: number) => {
+    setCurrentSlide(index);
+  };
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % activePromotions.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + activePromotions.length) % activePromotions.length);
   };
 
   return (
@@ -75,67 +96,102 @@ const Index = () => {
               <p className="text-muted-foreground">Don't miss out on these amazing deals!</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activePromotions.map((promotion) => (
-                <Card key={promotion.id} className="group hover:shadow-lg transition-all duration-300 border-2 border-primary/20 hover:border-primary/40">
-                  <CardContent className="p-0">
-                    <div className="relative">
-                      {/* Hero Video/Image */}
-                      {promotion.image_url ? (
-                        <div className="relative overflow-hidden rounded-t-lg">
-                          <img
-                            src={promotion.image_url}
-                            alt={promotion.title}
-                            className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          {/* Video Play Overlay */}
-                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <div className="bg-white/90 rounded-full p-3">
-                              <Play className="h-8 w-8 text-primary" />
+            <div className="relative overflow-hidden">
+              <div className="flex transition-transform duration-500 ease-in-out"
+                   style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
+                {activePromotions.map((promotion) => (
+                  <div key={promotion.id} className="w-full flex-shrink-0 px-4">
+                    <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-primary/20 hover:border-primary/40">
+                      <CardContent className="p-0">
+                        <div className="relative">
+                          {/* Hero Video/Image */}
+                          {promotion.image_url ? (
+                            <div className="relative overflow-hidden rounded-t-lg">
+                              <img
+                                src={promotion.image_url}
+                                alt={promotion.title}
+                                className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                              {/* Video Play Overlay */}
+                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <div className="bg-white/90 rounded-full p-3">
+                                  <Play className="h-8 w-8 text-primary" />
+                                </div>
+                              </div>
+                              {/* Promotional Badge */}
+                              <div className="absolute top-2 right-2">
+                                <Badge className="bg-red-500 hover:bg-red-600 animate-pulse">
+                                  🔥 HOT DEAL
+                                </Badge>
+                              </div>
                             </div>
-                          </div>
-                          {/* Promotional Badge */}
-                          <div className="absolute top-2 right-2">
-                            <Badge className="bg-red-500 hover:bg-red-600 animate-pulse">
-                              🔥 HOT DEAL
-                            </Badge>
-                          </div>
+                          ) : (
+                            <div className="h-48 bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-lg flex items-center justify-center">
+                              <div className="text-center">
+                                <Zap className="h-12 w-12 text-primary mx-auto mb-2" />
+                                <p className="text-sm text-muted-foreground">Promotional Content</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <div className="h-48 bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-lg flex items-center justify-center">
-                          <div className="text-center">
-                            <Zap className="h-12 w-12 text-primary mx-auto mb-2" />
-                            <p className="text-sm text-muted-foreground">Promotional Content</p>
-                          </div>
+                        
+                        <div className="p-6">
+                          <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                            {promotion.title}
+                          </h3>
+                          {promotion.description && (
+                            <p className="text-muted-foreground text-sm mb-4">
+                              {promotion.description}
+                            </p>
+                          )}
+                          
+                          {promotion.link_url && (
+                            <Button asChild className="w-full">
+                              <a 
+                                href={promotion.link_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                Learn More
+                              </a>
+                            </Button>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
-                        {promotion.title}
-                      </h3>
-                      {promotion.description && (
-                        <p className="text-muted-foreground text-sm mb-4">
-                          {promotion.description}
-                        </p>
-                      )}
-                      
-                      {promotion.link_url && (
-                        <Button asChild className="w-full">
-                          <a 
-                            href={promotion.link_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Learn More
-                          </a>
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Navigation Arrows */}
+              <button 
+                onClick={prevSlide}
+                className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-md z-10 ml-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button 
+                onClick={nextSlide}
+                className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-md z-10 mr-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              
+              {/* Dots Indicator */}
+              <div className="flex justify-center mt-6 space-x-2">
+                {activePromotions.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToSlide(index)}
+                    className={`w-3 h-3 rounded-full ${currentSlide === index ? 'bg-primary' : 'bg-gray-300'}`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
             </div>
           </section>
         )}
