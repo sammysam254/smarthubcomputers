@@ -137,7 +137,7 @@ const Footer = () => {
 
         <div className="border-t border-background/20 mt-12 pt-8 text-center">
           <p className="text-background/60 text-sm">
-            © 2024 SmartHub Computers. All rights reserved. | Privacy Policy | Terms of Service
+            © 2025 SmartHub Computers. All rights reserved. | Privacy Policy | Terms of Service
           </p>
         </div>
       </div>
