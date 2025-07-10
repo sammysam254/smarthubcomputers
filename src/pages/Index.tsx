@@ -96,71 +96,76 @@ const Index = () => {
               <p className="text-muted-foreground">Don't miss out on these amazing deals!</p>
             </div>
             
-            <div className="relative overflow-hidden">
-              <div className="flex transition-transform duration-500 ease-in-out"
-                   style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
-                {activePromotions.map((promotion) => (
-                  <div key={promotion.id} className="w-full flex-shrink-0 px-4">
-                    <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-primary/20 hover:border-primary/40">
-                      <CardContent className="p-0">
-                        <div className="relative">
-                          {/* Hero Video/Image */}
-                          {promotion.image_url ? (
-                            <div className="relative overflow-hidden rounded-t-lg">
-                              <img
-                                src={promotion.image_url}
-                                alt={promotion.title}
-                                className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                              {/* Video Play Overlay */}
-                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                <div className="bg-white/90 rounded-full p-3">
-                                  <Play className="h-8 w-8 text-primary" />
+            <div className="relative">
+              <div className="flex overflow-hidden">
+                <div 
+                  className="flex transition-transform duration-500 ease-in-out w-full"
+                  style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                >
+                  {activePromotions.map((promotion) => (
+                    <div key={promotion.id} className="w-full flex-shrink-0 px-4">
+                      <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-primary/20 hover:border-primary/40 h-full flex flex-col">
+                        <CardContent className="p-0 flex flex-col flex-grow">
+                          <div className="relative flex-grow">
+                            {/* Hero Video/Image */}
+                            {promotion.image_url ? (
+                              <div className="relative h-full min-h-[300px] flex items-center justify-center overflow-hidden rounded-t-lg bg-gray-50">
+                                <img
+                                  src={promotion.image_url}
+                                  alt={promotion.title}
+                                  className="object-contain max-h-[300px] w-auto group-hover:scale-105 transition-transform duration-300 p-4"
+                                  style={{ maxWidth: '100%' }}
+                                />
+                                {/* Video Play Overlay */}
+                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                  <div className="bg-white/90 rounded-full p-3">
+                                    <Play className="h-8 w-8 text-primary" />
+                                  </div>
+                                </div>
+                                {/* Promotional Badge */}
+                                <div className="absolute top-2 right-2">
+                                  <Badge className="bg-red-500 hover:bg-red-600 animate-pulse">
+                                    🔥 HOT DEAL
+                                  </Badge>
                                 </div>
                               </div>
-                              {/* Promotional Badge */}
-                              <div className="absolute top-2 right-2">
-                                <Badge className="bg-red-500 hover:bg-red-600 animate-pulse">
-                                  🔥 HOT DEAL
-                                </Badge>
+                            ) : (
+                              <div className="h-48 bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-lg flex items-center justify-center">
+                                <div className="text-center">
+                                  <Zap className="h-12 w-12 text-primary mx-auto mb-2" />
+                                  <p className="text-sm text-muted-foreground">Promotional Content</p>
+                                </div>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="h-48 bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-lg flex items-center justify-center">
-                              <div className="text-center">
-                                <Zap className="h-12 w-12 text-primary mx-auto mb-2" />
-                                <p className="text-sm text-muted-foreground">Promotional Content</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="p-6">
-                          <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
-                            {promotion.title}
-                          </h3>
-                          {promotion.description && (
-                            <p className="text-muted-foreground text-sm mb-4">
-                              {promotion.description}
-                            </p>
-                          )}
+                            )}
+                          </div>
                           
-                          {promotion.link_url && (
-                            <Button asChild className="w-full">
-                              <a 
-                                href={promotion.link_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                Learn More
-                              </a>
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                ))}
+                          <div className="p-6">
+                            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                              {promotion.title}
+                            </h3>
+                            {promotion.description && (
+                              <p className="text-muted-foreground text-sm mb-4">
+                                {promotion.description}
+                              </p>
+                            )}
+                            
+                            {promotion.link_url && (
+                              <Button asChild className="w-full">
+                                <a 
+                                  href={promotion.link_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Learn More
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  ))}
+                </div>
               </div>
               
               {/* Navigation Arrows */}
