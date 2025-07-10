@@ -5,7 +5,10 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Zap } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Play, Zap, Upload, X, Plus } from 'lucide-react';
 import Header from '@/components/Header';
 import Hero from '@/components/Hero';
 import Categories from '@/components/Categories';
@@ -18,16 +21,39 @@ interface Promotion {
   image_url: string | null;
   link_url: string | null;
   active: boolean;
+  product_id?: string | null;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  image_url: string;
+  price: number;
 }
 
 const Index = () => {
   const { user } = useAuth();
-  const { isAdmin, fetchPromotions } = useAdmin();
+  const { isAdmin, fetchPromotions, savePromotion } = useAdmin();
   const [activePromotions, setActivePromotions] = useState<Promotion[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [showAddPromo, setShowAddPromo] = useState(false);
+  const [newPromotion, setNewPromotion] = useState<Partial<Promotion>>({
+    title: '',
+    description: '',
+    active: true,
+    image_url: null,
+    link_url: '',
+    product_id: null
+  });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     loadActivePromotions();
+    if (isAdmin) {
+      fetchProducts();
+    }
   }, []);
 
   useEffect(() => {
@@ -47,6 +73,91 @@ const Index = () => {
     } catch (error) {
       console.error('Error loading promotions:', error);
     }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      // Replace with your actual products fetch API
+      const response = await fetch('/api/products');
+      const data = await response.json();
+      setProducts(data);
+    } catch (error) {
+      console.error('Error loading products:', error);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+        setNewPromotion(prev => ({
+          ...prev,
+          image_url: reader.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleProductSelect = (productId: string) => {
+    const selectedProduct = products.find(p => p.id === productId);
+    if (selectedProduct) {
+      setNewPromotion(prev => ({
+        ...prev,
+        product_id: productId,
+        title: selectedProduct.name,
+        image_url: selectedProduct.image_url,
+        link_url: `/products/${productId}`
+      }));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Handle file upload if new image was selected
+      let imageUrl = newPromotion.image_url;
+      if (selectedFile) {
+        // Replace with your actual file upload logic
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const uploadData = await uploadResponse.json();
+        imageUrl = uploadData.url;
+      }
+
+      const promotionToSave = {
+        ...newPromotion,
+        image_url: imageUrl
+      };
+
+      await savePromotion(promotionToSave);
+      await loadActivePromotions();
+      resetForm();
+    } catch (error) {
+      console.error('Error saving promotion:', error);
+    }
+  };
+
+  const resetForm = () => {
+    setNewPromotion({
+      title: '',
+      description: '',
+      active: true,
+      image_url: null,
+      link_url: '',
+      product_id: null
+    });
+    setSelectedFile(null);
+    setPreviewImage(null);
+    setShowAddPromo(false);
   };
 
   const goToSlide = (index: number) => {
@@ -70,21 +181,136 @@ const Index = () => {
         {/* Admin Debug Section - Only show to admin users */}
         {user && isAdmin && (
           <div className="container mx-auto px-4 py-4 bg-blue-50 border border-blue-200 rounded-lg mb-8">
-            <div className="text-center">
-              <p className="text-sm text-blue-800 mb-2">
-                Logged in as: {user.email}
-              </p>
-              <p className="text-sm text-blue-800 mb-4">
-                Admin status: {isAdmin ? 'Yes' : 'No'}
-              </p>
-              {isAdmin && (
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm text-blue-800 mb-1">
+                  Logged in as: {user.email}
+                </p>
+                <p className="text-sm text-blue-800">
+                  Admin status: {isAdmin ? 'Yes' : 'No'}
+                </p>
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={() => setShowAddPromo(!showAddPromo)} 
+                  variant="default" 
+                  size="sm"
+                  className="flex items-center"
+                >
+                  {showAddPromo ? <X className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+                  {showAddPromo ? 'Cancel' : 'Add Promotion'}
+                </Button>
                 <Link to="/admin">
                   <Button variant="default" size="sm">
-                    Go to Admin Panel
+                    Admin Panel
                   </Button>
                 </Link>
-              )}
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* Add Promotion Form */}
+        {showAddPromo && isAdmin && (
+          <div className="container mx-auto px-4 py-6 mb-8 bg-white rounded-lg shadow-md">
+            <h3 className="text-xl font-bold mb-4">Add New Promotion</h3>
+            <form onSubmit={handleSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Promotion Title</label>
+                    <Input
+                      value={newPromotion.title || ''}
+                      onChange={(e) => setNewPromotion({...newPromotion, title: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Description</label>
+                    <Textarea
+                      value={newPromotion.description || ''}
+                      onChange={(e) => setNewPromotion({...newPromotion, description: e.target.value})}
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Link URL</label>
+                    <Input
+                      value={newPromotion.link_url || ''}
+                      onChange={(e) => setNewPromotion({...newPromotion, link_url: e.target.value})}
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Select Product</label>
+                    <Select onValueChange={handleProductSelect}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a product" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map(product => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Promotion Image</label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                      {previewImage || newPromotion.image_url ? (
+                        <div className="relative">
+                          <img
+                            src={previewImage || newPromotion.image_url || ''}
+                            alt="Preview"
+                            className="max-h-64 mx-auto mb-2"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreviewImage(null);
+                              setSelectedFile(null);
+                              setNewPromotion({...newPromotion, image_url: null});
+                            }}
+                            className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="py-8">
+                          <Upload className="h-10 w-10 mx-auto text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500 mb-2">Drag and drop your image here</p>
+                          <p className="text-xs text-gray-400 mb-4">or</p>
+                          <label className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-md cursor-pointer">
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={handleFileChange}
+                            />
+                            Browse Files
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={resetForm}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit">
+                      Save Promotion
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </form>
           </div>
         )}
 
