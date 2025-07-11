@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAdmin } from '@/hooks/useAdmin';
+import { useAdmin, Product } from '@/hooks/useAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,20 +14,11 @@ import { Plus, Edit, Trash2, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ProductsManager = () => {
-  const { 
-    fetchProducts, 
-    createProduct, 
-    updateProduct, 
-    deleteProduct,
-    isAdmin,
-    loading: adminLoading
-  } = useAdmin();
-  
-  const [products, setProducts] = useState<any[]>([]);
+  const { fetchProducts, createProduct, updateProduct, deleteProduct } = useAdmin();
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -35,15 +26,12 @@ const ProductsManager = () => {
     original_price: '',
     category: '',
     image_url: '',
-    images: [] as File[],
     badge: '',
     badge_color: 'bg-blue-500',
     rating: '0',
     reviews_count: '0',
     in_stock: true,
   });
-  const [previewImages, setPreviewImages] = useState<string[]>([]);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     loadProducts();
@@ -62,61 +50,16 @@ const ProductsManager = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      setFormData(prev => ({ ...prev, images: [...prev.images, ...files] }));
-      
-      const newPreviews = files.map(file => URL.createObjectURL(file));
-      setPreviewImages(prev => [...prev, ...newPreviews]);
-    }
-  };
-
-  const handleFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      setFormData(prev => ({ ...prev, images: [...prev.images, ...files] }));
-      
-      const newPreviews = files.map(file => URL.createObjectURL(file));
-      setPreviewImages(prev => [...prev, ...newPreviews]);
-    }
-  };
-
-  const removeImage = (index: number) => {
-    const newImages = [...formData.images];
-    const newPreviews = [...previewImages];
-    
-    newImages.splice(index, 1);
-    newPreviews.splice(index, 1);
-    
-    setFormData(prev => ({ ...prev, images: newImages }));
-    setPreviewImages(newPreviews);
-    
-    if (currentImageIndex >= newPreviews.length && newPreviews.length > 0) {
-      setCurrentImageIndex(newPreviews.length - 1);
-    } else if (newPreviews.length === 0) {
-      setCurrentImageIndex(0);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsUploading(true);
     
     try {
       const productData = {
-        name: formData.name,
-        description: formData.description,
+        ...formData,
         price: parseFloat(formData.price),
         original_price: formData.original_price ? parseFloat(formData.original_price) : null,
-        category: formData.category,
-        image_url: formData.image_url,
-        images: formData.images,
-        badge: formData.badge,
-        badge_color: formData.badge_color,
         rating: parseFloat(formData.rating),
         reviews_count: parseInt(formData.reviews_count),
-        in_stock: formData.in_stock,
       };
 
       if (editingProduct) {
@@ -130,13 +73,11 @@ const ProductsManager = () => {
       loadProducts();
     } catch (error) {
       console.error('Error saving product:', error);
-      toast.error('Failed to save product. Please try again.');
-    } finally {
-      setIsUploading(false);
+      toast.error('Failed to save product');
     }
   };
 
-  const handleEdit = (product: any) => {
+  const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setFormData({
       name: product.name,
@@ -145,14 +86,12 @@ const ProductsManager = () => {
       original_price: product.original_price?.toString() || '',
       category: product.category,
       image_url: product.image_url || '',
-      images: [],
       badge: product.badge || '',
       badge_color: product.badge_color || 'bg-blue-500',
       rating: product.rating.toString(),
       reviews_count: product.reviews_count.toString(),
       in_stock: product.in_stock,
     });
-    setPreviewImages(product.images || []);
     setIsDialogOpen(true);
   };
 
@@ -161,7 +100,6 @@ const ProductsManager = () => {
     
     try {
       await deleteProduct(id);
-      toast.success('Product deleted successfully');
       loadProducts();
     } catch (error) {
       console.error('Error deleting product:', error);
@@ -178,15 +116,12 @@ const ProductsManager = () => {
       original_price: '',
       category: '',
       image_url: '',
-      images: [],
       badge: '',
       badge_color: 'bg-blue-500',
       rating: '0',
       reviews_count: '0',
       in_stock: true,
     });
-    setPreviewImages([]);
-    setCurrentImageIndex(0);
   };
 
   const badgeColors = [
@@ -197,23 +132,6 @@ const ProductsManager = () => {
     { value: 'bg-yellow-500', label: 'Yellow' },
     { value: 'bg-gray-500', label: 'Gray' },
   ];
-
-  if (adminLoading) {
-    return <div className="text-center py-8">Checking permissions...</div>;
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <h3 className="text-lg font-medium">Access Denied</h3>
-          <p className="text-muted-foreground mt-2">
-            You don't have permission to access this page.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   if (loading) {
     return <div className="text-center py-8">Loading products...</div>;
@@ -257,7 +175,6 @@ const ProductsManager = () => {
                   <Select
                     value={formData.category}
                     onValueChange={(value) => setFormData({ ...formData, category: value })}
-                    required
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
@@ -312,82 +229,13 @@ const ProductsManager = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Product Images</Label>
-                <div className="flex flex-col space-y-4">
-                  {previewImages.length > 0 && (
-                    <div className="relative">
-                      <div className="aspect-square w-full bg-gray-100 rounded-lg overflow-hidden">
-                        <img
-                          src={previewImages[currentImageIndex]}
-                          alt={`Preview ${currentImageIndex + 1}`}
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
-                      {previewImages.length > 1 && (
-                        <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
-                          {previewImages.map((_, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              onClick={() => setCurrentImageIndex(index)}
-                              className={`w-3 h-3 rounded-full ${currentImageIndex === index ? 'bg-primary' : 'bg-gray-300'}`}
-                              aria-label={`Go to slide ${index + 1}`}
-                            />
-                          ))}
-                        </div>
-                      )}
-                      <div className="absolute top-2 right-2">
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => removeImage(currentImageIndex)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label htmlFor="file-upload" className="cursor-pointer">
-                        <div className="flex flex-col items-center justify-center space-y-2 p-4 border-2 border-dashed rounded-lg hover:bg-gray-50">
-                          <Plus className="h-6 w-6 text-gray-400" />
-                          <span className="text-sm text-gray-500">Upload Files</span>
-                          <span className="text-xs text-gray-400">Select multiple</span>
-                        </div>
-                      </Label>
-                      <Input
-                        id="file-upload"
-                        type="file"
-                        multiple
-                        onChange={handleFileChange}
-                        className="hidden"
-                        accept="image/*"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="folder-upload" className="cursor-pointer">
-                        <div className="flex flex-col items-center justify-center space-y-2 p-4 border-2 border-dashed rounded-lg hover:bg-gray-50">
-                          <Plus className="h-6 w-6 text-gray-400" />
-                          <span className="text-sm text-gray-500">Upload Folder</span>
-                          <span className="text-xs text-gray-400">All images in folder</span>
-                        </div>
-                      </Label>
-                      <Input
-                        id="folder-upload"
-                        type="file"
-                        multiple
-                        onChange={handleFolderChange}
-                        className="hidden"
-                        accept="image/*"
-                        // @ts-ignore
-                        webkitdirectory="true"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <Label htmlFor="image_url">Image URL</Label>
+                <Input
+                  id="image_url"
+                  type="url"
+                  value={formData.image_url}
+                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -461,16 +309,11 @@ const ProductsManager = () => {
               </div>
 
               <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsDialogOpen(false)}
-                  disabled={isUploading}
-                >
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isUploading}>
-                  {isUploading ? 'Saving...' : editingProduct ? 'Update Product' : 'Create Product'}
+                <Button type="submit">
+                  {editingProduct ? 'Update Product' : 'Create Product'}
                 </Button>
               </DialogFooter>
             </form>
@@ -495,19 +338,12 @@ const ProductsManager = () => {
               <TableRow key={product.id}>
                 <TableCell>
                   <div className="flex items-center space-x-3">
-                    {product.images && product.images.length > 0 && (
-                      <div className="relative w-12 h-12">
-                        <img
-                          src={product.images[0]}
-                          alt={product.name}
-                          className="w-full h-full object-cover rounded"
-                        />
-                        {product.images.length > 1 && (
-                          <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                            +{product.images.length - 1}
-                          </span>
-                        )}
-                      </div>
+                    {product.image_url && (
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-12 h-12 object-cover rounded"
+                      />
                     )}
                     <div>
                       <div className="font-medium">{product.name}</div>
@@ -574,5 +410,4 @@ const ProductsManager = () => {
     </div>
   );
 };
-
 export default ProductsManager;
