@@ -26,12 +26,15 @@ const ProductsManager = () => {
     original_price: '',
     category: '',
     image_url: '',
+    images: [] as File[],
     badge: '',
     badge_color: 'bg-blue-500',
     rating: '0',
     reviews_count: '0',
     in_stock: true,
   });
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     loadProducts();
@@ -50,6 +53,45 @@ const ProductsManager = () => {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setFormData({ ...formData, images: [...formData.images, ...files] });
+      
+      // Create preview URLs
+      const newPreviews = files.map(file => URL.createObjectURL(file));
+      setPreviewImages([...previewImages, ...newPreviews]);
+    }
+  };
+
+  const handleFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setFormData({ ...formData, images: [...formData.images, ...files] });
+      
+      // Create preview URLs
+      const newPreviews = files.map(file => URL.createObjectURL(file));
+      setPreviewImages([...previewImages, ...newPreviews]);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = [...formData.images];
+    const newPreviews = [...previewImages];
+    
+    newImages.splice(index, 1);
+    newPreviews.splice(index, 1);
+    
+    setFormData({ ...formData, images: newImages });
+    setPreviewImages(newPreviews);
+    
+    if (currentImageIndex >= newPreviews.length && newPreviews.length > 0) {
+      setCurrentImageIndex(newPreviews.length - 1);
+    } else if (newPreviews.length === 0) {
+      setCurrentImageIndex(0);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -60,6 +102,9 @@ const ProductsManager = () => {
         original_price: formData.original_price ? parseFloat(formData.original_price) : null,
         rating: parseFloat(formData.rating),
         reviews_count: parseInt(formData.reviews_count),
+        // You'll need to handle the image uploads here
+        // This might involve uploading to a server or cloud storage
+        // and getting back URLs to store in your database
       };
 
       if (editingProduct) {
@@ -86,12 +131,14 @@ const ProductsManager = () => {
       original_price: product.original_price?.toString() || '',
       category: product.category,
       image_url: product.image_url || '',
+      images: [],
       badge: product.badge || '',
       badge_color: product.badge_color || 'bg-blue-500',
       rating: product.rating.toString(),
       reviews_count: product.reviews_count.toString(),
       in_stock: product.in_stock,
     });
+    setPreviewImages(product.image_url ? [product.image_url] : []);
     setIsDialogOpen(true);
   };
 
@@ -116,12 +163,15 @@ const ProductsManager = () => {
       original_price: '',
       category: '',
       image_url: '',
+      images: [],
       badge: '',
       badge_color: 'bg-blue-500',
       rating: '0',
       reviews_count: '0',
       in_stock: true,
     });
+    setPreviewImages([]);
+    setCurrentImageIndex(0);
   };
 
   const badgeColors = [
@@ -229,13 +279,82 @@ const ProductsManager = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image_url">Image URL</Label>
-                <Input
-                  id="image_url"
-                  type="url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                />
+                <Label>Product Images</Label>
+                <div className="flex flex-col space-y-4">
+                  {previewImages.length > 0 && (
+                    <div className="relative">
+                      <div className="aspect-square w-full bg-gray-100 rounded-lg overflow-hidden">
+                        <img
+                          src={previewImages[currentImageIndex]}
+                          alt={`Preview ${currentImageIndex + 1}`}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      {previewImages.length > 1 && (
+                        <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
+                          {previewImages.map((_, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => setCurrentImageIndex(index)}
+                              className={`w-3 h-3 rounded-full ${currentImageIndex === index ? 'bg-primary' : 'bg-gray-300'}`}
+                              aria-label={`Go to slide ${index + 1}`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeImage(currentImageIndex)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label htmlFor="file-upload" className="cursor-pointer">
+                        <div className="flex flex-col items-center justify-center space-y-2 p-4 border-2 border-dashed rounded-lg hover:bg-gray-50">
+                          <Plus className="h-6 w-6 text-gray-400" />
+                          <span className="text-sm text-gray-500">Upload Files</span>
+                          <span className="text-xs text-gray-400">Select multiple</span>
+                        </div>
+                      </Label>
+                      <Input
+                        id="file-upload"
+                        type="file"
+                        multiple
+                        onChange={handleFileChange}
+                        className="hidden"
+                        accept="image/*"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="folder-upload" className="cursor-pointer">
+                        <div className="flex flex-col items-center justify-center space-y-2 p-4 border-2 border-dashed rounded-lg hover:bg-gray-50">
+                          <Plus className="h-6 w-6 text-gray-400" />
+                          <span className="text-sm text-gray-500">Upload Folder</span>
+                          <span className="text-xs text-gray-400">All images in folder</span>
+                        </div>
+                      </Label>
+                      <Input
+                        id="folder-upload"
+                        type="file"
+                        multiple
+                        onChange={handleFolderChange}
+                        className="hidden"
+                        accept="image/*"
+                        // @ts-ignore - webkitdirectory is not in the type definition
+                        webkitdirectory="true"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
