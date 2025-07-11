@@ -353,7 +353,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
-          image_url: string | null
+          image_urls: string | null
           in_stock: boolean | null
           name: string
           original_price: number | null
@@ -370,7 +370,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
-          image_url?: string | null
+          image_urls?: string | null
           in_stock?: boolean | null
           name: string
           original_price?: number | null
