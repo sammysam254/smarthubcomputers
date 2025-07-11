@@ -1,5 +1,6 @@
 import { useState, useEffect, ChangeEvent } from 'react';
 import { useAdmin, Product } from '@/hooks/useAdmin';
+import { supabase } from '@/integrations/supabase/client'; // MAKE SURE THIS PATH IS CORRECT!
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,24 +14,40 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Edit, Trash2, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Utility function for uploading images, update this to your backend logic
+// Upload images directly to Supabase Storage bucket 'product-images'
 async function uploadImages(files: File[]): Promise<string[]> {
-  // Example: Upload each file and get URLs
   const urls: string[] = [];
   for (const file of files) {
-    // Replace below with your actual upload logic (to S3, backend, etc.)
-    // Example: using FormData
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await response.json();
-      urls.push(data.url); // Assume response is { url: "..." }
-    } catch (err) {
-      toast.error(`Failed to upload ${file.name}`);
+    // Restrict file types to common image formats (client-side check)
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
+    if (!allowed.includes(file.type)) {
+      toast.error(`File type not allowed: ${file.type}`);
+      continue;
+    }
+
+    // Unique path for image
+    const filePath = `products/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`;
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, file);
+
+    if (error) {
+      console.error('Supabase upload error:', error);
+      toast.error(`Failed to upload ${file.name}: ${error.message}`);
+      continue;
+    }
+
+    // Get the public URL for the uploaded image
+    const { data: publicUrlData } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filePath);
+
+    if (publicUrlData?.publicUrl) {
+      urls.push(publicUrlData.publicUrl);
+    } else {
+      toast.error(`Could not get public URL for ${file.name}`);
     }
   }
   return urls;
@@ -87,6 +104,10 @@ const ProductsManager = () => {
     if (selectedFiles.length > 0) {
       toast.info('Uploading images...');
       image_urls = await uploadImages(selectedFiles);
+      if (image_urls.length === 0) {
+        toast.error('No images were successfully uploaded.');
+        return;
+      }
     }
 
     try {
@@ -101,8 +122,10 @@ const ProductsManager = () => {
 
       if (editingProduct) {
         await updateProduct(editingProduct.id, productData);
+        toast.success('Product updated successfully');
       } else {
         await createProduct(productData);
+        toast.success('Product created successfully');
       }
 
       setIsDialogOpen(false);
@@ -138,6 +161,7 @@ const ProductsManager = () => {
 
     try {
       await deleteProduct(id);
+      toast.success('Product deleted successfully');
       loadProducts();
     } catch (error) {
       console.error('Error deleting product:', error);
