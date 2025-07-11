@@ -1,8 +1,8 @@
-
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Star, ShoppingCart } from 'lucide-react';
+import { Star, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 
 interface Product {
@@ -10,13 +10,14 @@ interface Product {
   name: string;
   price: number;
   original_price: number | null;
-  image_url: string | null;
+  image_url: string;
+  images: string[];
   category: string;
-  rating: number | null;
-  reviews_count: number | null;
+  rating: number;
+  reviews_count: number;
   badge: string | null;
   badge_color: string | null;
-  in_stock: boolean | null;
+  in_stock: boolean;
   description: string | null;
 }
 
@@ -28,6 +29,7 @@ interface ProductModalProps {
 
 const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
   const { addToCart } = useCart();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   if (!product) return null;
 
@@ -36,9 +38,21 @@ const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
       id: product.id,
       name: product.name,
       price: product.price,
-      image: product.image_url || '',
+      image: product.image_url,
     });
     onClose();
+  };
+
+  const nextImage = () => {
+    setCurrentImageIndex((prevIndex) => 
+      prevIndex === product.images.length - 1 ? 0 : prevIndex + 1
+    );
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prevIndex) => 
+      prevIndex === 0 ? product.images.length - 1 : prevIndex - 1
+    );
   };
 
   return (
@@ -53,11 +67,32 @@ const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="relative">
-            <img
-              src={product.image_url || 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=400&h=300&fit=crop&crop=center'}
-              alt={product.name}
-              className="w-full h-64 object-cover rounded-lg"
-            />
+            <div className="relative aspect-square w-full bg-gray-100 rounded-lg overflow-hidden">
+              <img
+                src={product.images[currentImageIndex] || product.image_url || 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=400&h=300&fit=crop&crop=center'}
+                alt={product.name}
+                className="w-full h-full object-contain"
+              />
+              
+              {product.images.length > 1 && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 shadow-md hover:bg-white"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-1 shadow-md hover:bg-white"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </>
+              )}
+            </div>
             
             {product.badge && (
               <Badge className={`absolute top-3 left-3 ${product.badge_color || 'bg-primary'} text-white`}>
@@ -70,6 +105,19 @@ const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
                 <Badge variant="destructive">Out of Stock</Badge>
               </div>
             )}
+
+            {product.images.length > 1 && (
+              <div className="flex justify-center mt-2 space-x-2">
+                {product.images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`w-2 h-2 rounded-full ${currentImageIndex === index ? 'bg-primary' : 'bg-gray-300'}`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -80,25 +128,23 @@ const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
               </p>
             </div>
 
-            {product.rating && (
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-4 w-4 ${
-                        i < Math.floor(product.rating!) 
-                          ? 'text-yellow-400 fill-current' 
-                          : 'text-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {product.rating} ({product.reviews_count || 0} reviews)
-                </span>
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-4 w-4 ${
+                      i < Math.floor(product.rating) 
+                        ? 'text-yellow-400 fill-current' 
+                        : 'text-gray-300'
+                    }`}
+                  />
+                ))}
               </div>
-            )}
+              <span className="text-sm text-muted-foreground">
+                {product.rating.toFixed(1)} ({product.reviews_count} reviews)
+              </span>
+            </div>
 
             <div className="flex items-center space-x-2">
               <span className="text-2xl font-bold text-primary">
