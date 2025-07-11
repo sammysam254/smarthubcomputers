@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Star, ShoppingCart, Search } from 'lucide-react';
+import { Star, ShoppingCart, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -17,13 +17,14 @@ interface Product {
   name: string;
   price: number;
   original_price: number | null;
-  image_url: string | null;
+  image_url: string;
+  images: string[];
   category: string;
-  rating: number | null;
-  reviews_count: number | null;
+  rating: number;
+  reviews_count: number;
   badge: string | null;
   badge_color: string | null;
-  in_stock: boolean | null;
+  in_stock: boolean;
   description: string | null;
 }
 
@@ -101,7 +102,7 @@ const Products = () => {
       id: product.id,
       name: product.name,
       price: product.price,
-      image: product.image_url || '',
+      image: product.image_url,
     });
   };
 
@@ -192,12 +193,25 @@ const Products = () => {
             {filteredProducts.map((product) => (
               <Card key={product.id} className="hover:shadow-card transition-all duration-300 hover:-translate-y-1">
                 <CardContent className="p-0">
-                  <div className="relative overflow-hidden rounded-t-lg">
-                    <img
-                      src={product.image_url || 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=400&h=300&fit=crop&crop=center'}
-                      alt={product.name}
-                      className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300"
-                    />
+                  <div className="relative aspect-square overflow-hidden rounded-t-lg">
+                    <div className="relative w-full h-full bg-gray-100">
+                      <img
+                        src={product.images?.[0] || product.image_url || 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=400&h=300&fit=crop&crop=center'}
+                        alt={product.name}
+                        className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+                      />
+                      
+                      {product.images?.length > 1 && (
+                        <div className="absolute bottom-2 left-0 right-0 flex justify-center space-x-1">
+                          {product.images.map((_, index) => (
+                            <div
+                              key={index}
+                              className={`w-2 h-2 rounded-full ${index === 0 ? 'bg-primary' : 'bg-gray-300'}`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     
                     {product.badge && (
                       <Badge className={`absolute top-3 left-3 ${product.badge_color || 'bg-primary'} text-white`}>
@@ -221,25 +235,23 @@ const Products = () => {
                     </h3>
 
                     {/* Rating */}
-                    {product.rating && (
-                      <div className="flex items-center space-x-2">
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-4 w-4 ${
-                                i < Math.floor(product.rating!) 
-                                  ? 'text-yellow-400 fill-current' 
-                                  : 'text-gray-300'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-sm text-muted-foreground">
-                          {product.rating} ({product.reviews_count || 0})
-                        </span>
+                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-4 w-4 ${
+                              i < Math.floor(product.rating) 
+                                ? 'text-yellow-400 fill-current' 
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
                       </div>
-                    )}
+                      <span className="text-sm text-muted-foreground">
+                        {product.rating.toFixed(1)} ({product.reviews_count})
+                      </span>
+                    </div>
 
                     {/* Price */}
                     <div className="flex items-center space-x-2">
