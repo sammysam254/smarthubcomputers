@@ -1,6 +1,5 @@
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { useAdmin, Product } from '@/hooks/useAdmin';
-import { supabase } from '@/integrations/supabase/client'; // MAKE SURE THIS PATH IS CORRECT!
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,45 +13,6 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Edit, Trash2, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Upload images directly to Supabase Storage bucket 'product-images'
-async function uploadImages(files: File[]): Promise<string[]> {
-  const urls: string[] = [];
-  for (const file of files) {
-    // Restrict file types to common image formats (client-side check)
-    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
-    if (!allowed.includes(file.type)) {
-      toast.error(`File type not allowed: ${file.type}`);
-      continue;
-    }
-
-    // Unique path for image
-    const filePath = `products/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`;
-
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from('product-images')
-      .upload(filePath, file);
-
-    if (error) {
-      console.error('Supabase upload error:', error);
-      toast.error(`Failed to upload ${file.name}: ${error.message}`);
-      continue;
-    }
-
-    // Get the public URL for the uploaded image
-    const { data: publicUrlData } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(filePath);
-
-    if (publicUrlData?.publicUrl) {
-      urls.push(publicUrlData.publicUrl);
-    } else {
-      toast.error(`Could not get public URL for ${file.name}`);
-    }
-  }
-  return urls;
-}
-
 const ProductsManager = () => {
   const { fetchProducts, createProduct, updateProduct, deleteProduct } = useAdmin();
   const [products, setProducts] = useState<Product[]>([]);
@@ -65,14 +25,13 @@ const ProductsManager = () => {
     price: '',
     original_price: '',
     category: '',
-    image_urls: [] as string[], // Array of URLs
+    image_url: '',
     badge: '',
     badge_color: 'bg-blue-500',
     rating: '0',
     reviews_count: '0',
     in_stock: true,
   });
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   useEffect(() => {
     loadProducts();
@@ -91,25 +50,9 @@ const ProductsManager = () => {
     }
   };
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setSelectedFiles(Array.from(e.target.files));
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    let image_urls = formData.image_urls;
-    if (selectedFiles.length > 0) {
-      toast.info('Uploading images...');
-      image_urls = await uploadImages(selectedFiles);
-      if (image_urls.length === 0) {
-        toast.error('No images were successfully uploaded.');
-        return;
-      }
-    }
-
+    
     try {
       const productData = {
         ...formData,
@@ -117,15 +60,12 @@ const ProductsManager = () => {
         original_price: formData.original_price ? parseFloat(formData.original_price) : null,
         rating: parseFloat(formData.rating),
         reviews_count: parseInt(formData.reviews_count),
-        image_urls,
       };
 
       if (editingProduct) {
         await updateProduct(editingProduct.id, productData);
-        toast.success('Product updated successfully');
       } else {
         await createProduct(productData);
-        toast.success('Product created successfully');
       }
 
       setIsDialogOpen(false);
@@ -145,23 +85,21 @@ const ProductsManager = () => {
       price: product.price.toString(),
       original_price: product.original_price?.toString() || '',
       category: product.category,
-      image_urls: product.image_urls || [], // Array of URLs
+      image_url: product.image_url || '',
       badge: product.badge || '',
       badge_color: product.badge_color || 'bg-blue-500',
       rating: product.rating.toString(),
       reviews_count: product.reviews_count.toString(),
       in_stock: product.in_stock,
     });
-    setSelectedFiles([]);
     setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
-
+    
     try {
       await deleteProduct(id);
-      toast.success('Product deleted successfully');
       loadProducts();
     } catch (error) {
       console.error('Error deleting product:', error);
@@ -177,14 +115,13 @@ const ProductsManager = () => {
       price: '',
       original_price: '',
       category: '',
-      image_urls: [],
+      image_url: '',
       badge: '',
       badge_color: 'bg-blue-500',
       rating: '0',
       reviews_count: '0',
       in_stock: true,
     });
-    setSelectedFiles([]);
   };
 
   const badgeColors = [
@@ -220,7 +157,7 @@ const ProductsManager = () => {
                 {editingProduct ? 'Update product information' : 'Create a new product for your store'}
               </DialogDescription>
             </DialogHeader>
-
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -232,6 +169,7 @@ const ProductsManager = () => {
                     required
                   />
                 </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
                   <Select
@@ -276,6 +214,7 @@ const ProductsManager = () => {
                     required
                   />
                 </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="original_price">Original Price (KES)</Label>
                   <Input
@@ -289,32 +228,14 @@ const ProductsManager = () => {
                 </div>
               </div>
 
-              {/* Multiple Image Upload */}
               <div className="space-y-2">
-                <Label htmlFor="images">Product Images</Label>
+                <Label htmlFor="image_url">Image URL</Label>
                 <Input
-                  id="images"
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleFileChange}
+                  id="image_url"
+                  type="url"
+                  value={formData.image_url}
+                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                 />
-                {(formData.image_urls.length > 0 || selectedFiles.length > 0) && (
-                  <div className="flex flex-wrap mt-2 gap-2">
-                    {formData.image_urls.map((url, idx) => (
-                      <img key={url + idx} src={url} alt={`Product Image ${idx + 1}`} className="w-16 h-16 object-cover rounded" />
-                    ))}
-                    {selectedFiles.map((file, idx) => (
-                      <img
-                        key={file.name + idx}
-                        src={URL.createObjectURL(file)}
-                        alt={file.name}
-                        className="w-16 h-16 object-cover rounded border"
-                      />
-                    ))}
-                  </div>
-                )}
-                <div className="text-xs text-muted-foreground">You can select multiple images.</div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -326,6 +247,7 @@ const ProductsManager = () => {
                     onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
                   />
                 </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="badge_color">Badge Color</Label>
                   <Select
@@ -359,6 +281,7 @@ const ProductsManager = () => {
                     onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
                   />
                 </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="reviews_count">Reviews Count</Label>
                   <Input
@@ -369,6 +292,7 @@ const ProductsManager = () => {
                     onChange={(e) => setFormData({ ...formData, reviews_count: e.target.value })}
                   />
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="in_stock">In Stock</Label>
                   <div className="flex items-center space-x-2 pt-2">
@@ -414,21 +338,13 @@ const ProductsManager = () => {
               <TableRow key={product.id}>
                 <TableCell>
                   <div className="flex items-center space-x-3">
-                    {product.image_urls && product.image_urls.length > 0 ? (
-                      <div className="flex">
-                        {product.image_urls.slice(0, 3).map((url: string, idx: number) => (
-                          <img
-                            key={url + idx}
-                            src={url}
-                            alt={product.name}
-                            className="w-12 h-12 object-cover rounded mr-1"
-                          />
-                        ))}
-                        {product.image_urls.length > 3 && (
-                          <span className="text-xs text-muted-foreground ml-1">+{product.image_urls.length - 3} more</span>
-                        )}
-                      </div>
-                    ) : null}
+                    {product.image_url && (
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                    )}
                     <div>
                       <div className="font-medium">{product.name}</div>
                       {product.badge && (
@@ -495,4 +411,4 @@ const ProductsManager = () => {
   );
 };
 
-export default ProductsManager;
+export default ProductsManager
