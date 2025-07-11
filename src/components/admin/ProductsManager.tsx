@@ -12,6 +12,43 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Edit, Trash2, Star } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+
+const uploadFiles = async (files: File[]): Promise<string[]> => {
+  const urls: string[] = [];
+  for (const file of files) {
+    // Only allow image file types
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
+    if (!allowed.includes(file.type)) {
+      throw new Error(`File type not allowed: ${file.type}`);
+    }
+
+    // Unique file path: products/<timestamp>-<filename>
+    const filePath = `products/${Date.now()}-${file.name}`;
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from("product-images")
+      .upload(filePath, file);
+
+    if (error) {
+      console.error("Supabase upload error:", error);
+      throw new Error(error.message || "Upload failed");
+    }
+
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from("product-images")
+      .getPublicUrl(filePath);
+
+    if (publicUrlData.publicUrl) {
+      urls.push(publicUrlData.publicUrl);
+    } else {
+      throw new Error("Unable to get public URL for uploaded image");
+    }
+  }
+  return urls;
+};
 
 const ProductsManager = () => {
   const { fetchProducts, createProduct, updateProduct, deleteProduct } = useAdmin();
@@ -19,6 +56,7 @@ const ProductsManager = () => {
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -35,7 +73,6 @@ const ProductsManager = () => {
   });
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     loadProducts();
@@ -51,30 +88,6 @@ const ProductsManager = () => {
       toast.error('Failed to load products');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const uploadFiles = async (files: File[]): Promise<string[]> => {
-    const formData = new FormData();
-    files.forEach(file => {
-      formData.append('files', file);
-    });
-
-    try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const data = await response.json();
-      return data.urls;
-    } catch (error) {
-      console.error('Upload error:', error);
-      throw error;
     }
   };
 
@@ -124,7 +137,14 @@ const ProductsManager = () => {
       
       // Upload new images if there are any
       if (formData.images.length > 0) {
-        imageUrls = await uploadFiles(formData.images);
+        try {
+          imageUrls = await uploadFiles(formData.images);
+          toast.success('Images uploaded successfully');
+        } catch (error) {
+          console.error('Error uploading images:', error);
+          toast.error('Failed to upload images');
+          return;
+        }
       }
 
       // Use existing image_url if no new images were uploaded
