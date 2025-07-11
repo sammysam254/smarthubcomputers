@@ -1,4 +1,3 @@
-```jsx
 import { useState, useEffect } from 'react';
 import { useAdmin, Product } from '@/hooks/useAdmin';
 import { Button } from '@/components/ui/button';
@@ -11,9 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Edit, Trash2, Star, Upload } from 'lucide-react';
+import { Plus, Edit, Trash2, Star } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabaseClient';
 
 const ProductsManager = () => {
   const { fetchProducts, createProduct, updateProduct, deleteProduct } = useAdmin();
@@ -21,11 +19,6 @@ const ProductsManager = () => {
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadType, setUploadType] = useState<'url' | 'file'>('url');
-
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -42,12 +35,6 @@ const ProductsManager = () => {
 
   useEffect(() => {
     loadProducts();
-    // Cleanup object URLs on component unmount
-    return () => {
-      if (imagePreview && uploadType === 'file') {
-        URL.revokeObjectURL(imagePreview);
-      }
-    };
   }, []);
 
   const loadProducts = async () => {
@@ -63,58 +50,12 @@ const ProductsManager = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Revoke previous object URL if it exists
-      if (imagePreview && uploadType === 'file') {
-        URL.revokeObjectURL(imagePreview);
-      }
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-      setFormData({ ...formData, image_url: '' });
-    }
-  };
-
-  const uploadImageToSupabase = async (file: File) => {
-    try {
-      setIsUploading(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const { error } = await supabase.storage
-        .from('product-images')
-        .upload(`public/${fileName}`, file);
-
-      if (error) throw error;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(`public/${fileName}`);
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Failed to upload image');
-      throw error;
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     try {
-      let finalImageUrl = formData.image_url;
-
-      // Handle file upload if a file is selected
-      if (uploadType === 'file' && imageFile) {
-        finalImageUrl = await uploadImageToSupabase(imageFile);
-      }
-
       const productData = {
         ...formData,
-        image_url: finalImageUrl,
         price: parseFloat(formData.price),
         original_price: formData.original_price ? parseFloat(formData.original_price) : null,
         rating: parseFloat(formData.rating),
@@ -130,7 +71,6 @@ const ProductsManager = () => {
       setIsDialogOpen(false);
       resetForm();
       loadProducts();
-      toast.success(editingProduct ? 'Product updated successfully' : 'Product created successfully');
     } catch (error) {
       console.error('Error saving product:', error);
       toast.error('Failed to save product');
@@ -152,19 +92,15 @@ const ProductsManager = () => {
       reviews_count: product.reviews_count.toString(),
       in_stock: product.in_stock,
     });
-    setImagePreview(product.image_url || '');
-    setImageFile(null);
-    setUploadType(product.image_url ? 'url' : 'file');
     setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
-
+    
     try {
       await deleteProduct(id);
       loadProducts();
-      toast.success('Product deleted successfully');
     } catch (error) {
       console.error('Error deleting product:', error);
       toast.error('Failed to delete product');
@@ -172,9 +108,6 @@ const ProductsManager = () => {
   };
 
   const resetForm = () => {
-    if (imagePreview && uploadType === 'file') {
-      URL.revokeObjectURL(imagePreview);
-    }
     setEditingProduct(null);
     setFormData({
       name: '',
@@ -189,9 +122,6 @@ const ProductsManager = () => {
       reviews_count: '0',
       in_stock: true,
     });
-    setImageFile(null);
-    setImagePreview('');
-    setUploadType('url');
   };
 
   const badgeColors = [
@@ -227,7 +157,7 @@ const ProductsManager = () => {
                 {editingProduct ? 'Update product information' : 'Create a new product for your store'}
               </DialogDescription>
             </DialogHeader>
-
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -239,7 +169,7 @@ const ProductsManager = () => {
                     required
                   />
                 </div>
-
+                
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
                   <Select
@@ -284,7 +214,7 @@ const ProductsManager = () => {
                     required
                   />
                 </div>
-
+                
                 <div className="space-y-2">
                   <Label htmlFor="original_price">Original Price (KES)</Label>
                   <Input
@@ -299,74 +229,14 @@ const ProductsManager = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Image Upload Method</Label>
-                <Select
-                  value={uploadType}
-                  onValueChange={(value: 'url' | 'file') => {
-                    if (imagePreview && uploadType === 'file') {
-                      URL.revokeObjectURL(imagePreview);
-                    }
-                    setUploadType(value);
-                    setImageFile(null);
-                    setImagePreview('');
-                    setFormData({ ...formData, image_url: '' });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select upload method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="url">Image URL</SelectItem>
-                    <SelectItem value="file">Upload File</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="image_url">Image URL</Label>
+                <Input
+                  id="image_url"
+                  type="url"
+                  value={formData.image_url}
+                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                />
               </div>
-
-              {uploadType === 'url' ? (
-                <div className="space-y-2">
-                  <Label htmlFor="image_url">Image URL</Label>
-                  <Input
-                    id="image_url"
-                    type="url"
-                    value={formData.image_url}
-                    onChange={(e) => {
-                      const url = e.target.value;
-                      setFormData({ ...formData, image_url: url });
-                      setImagePreview(url);
-                      setImageFile(null);
-                    }}
-                    placeholder="https://example.com/image.jpg"
-                  />
-                  {imagePreview && (
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-16 h-16 object-cover rounded mt-2"
-                      onError={() => setImagePreview('')} // Clear preview if URL is invalid
-                    />
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="image_file">Upload Image</Label>
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      id="image_file"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                    {imagePreview && (
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                    )}
-                  </div>
-                </div>
-              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -377,7 +247,7 @@ const ProductsManager = () => {
                     onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
                   />
                 </div>
-
+                
                 <div className="space-y-2">
                   <Label htmlFor="badge_color">Badge Color</Label>
                   <Select
@@ -411,7 +281,7 @@ const ProductsManager = () => {
                     onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
                   />
                 </div>
-
+                
                 <div className="space-y-2">
                   <Label htmlFor="reviews_count">Reviews Count</Label>
                   <Input
@@ -442,8 +312,8 @@ const ProductsManager = () => {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isUploading}>
-                  {isUploading ? 'Uploading...' : editingProduct ? 'Update Product' : 'Create Product'}
+                <Button type="submit">
+                  {editingProduct ? 'Update Product' : 'Create Product'}
                 </Button>
               </DialogFooter>
             </form>
@@ -455,7 +325,7 @@ const ProductsManager = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Product<?xml version="1.0" encoding="UTF-8"?>Product</TableHead>
+              <TableHead>Product</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Rating</TableHead>
@@ -541,127 +411,3 @@ const ProductsManager = () => {
   );
 };
 
-export default ProductsManager;
-```
-
-### Key Changes
-1. **Image Preview Fix**:
-   - Updated `handleFileChange` to revoke previous object URLs before creating a new one, preventing memory leaks.
-   - Modified the URL input handler to set `imagePreview` to the entered URL and clear `imageFile`.
-   - Added an `onError` handler to the URL preview image to clear the preview if the URL is invalid (e.g., if it fails to load).
-   - Added cleanup in `useEffect` and `resetForm` to revoke object URLs for file uploads when no longer needed.
-   - Ensured the preview image is displayed for both URL and file uploads, with proper sizing and styling (`w-16 h-16 object-cover rounded`).
-
-2. **Supabase Client Integration**:
-   - Kept the import as `import { supabase } from '@/integrations/supabaseClient';` to match your provided `supabaseClient.ts`.
-   - No changes to the Supabase storage logic (`uploadImageToSupabase`) since it was already working correctly with your client.
-
-3. **TypeScript Enhancements**:
-   - Added type annotations for `uploadType` (`'url' | 'file'`) and other state variables to ensure TypeScript compatibility.
-   - Ensured event handlers (e.g., `handleFileChange`) are typed correctly.
-
-4. **UI Improvements**:
-   - Added a `placeholder` to the URL input for better user experience.
-   - Maintained the preview image display for both upload methods, ensuring it updates dynamically when the URL or file changes.
-
-### Setup Instructions
-1. **Keep `supabaseClient.ts` As-Is**:
-   - Your provided `supabaseClient.ts` with hardcoded credentials is unchanged:
-     ```typescript
-     import { createClient } from '@supabase/supabase-js';
-     import type { Database } from './types';
-
-     const SUPABASE_URL = "https://ttwhalhtwbwrplnwzyvu.supabase.co";
-     const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0d2hhbGh0d2J3cnBsbnd6eXZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE2NDI1NTUsImV4cCI6MjA2NzIxODU1NX0.ipn4vBipoVBQmBKc4dsTstk76l_WIcK9a09HTer3o4I";
-
-     export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-       auth: {
-         storage: localStorage,
-         persistSession: true,
-         autoRefreshToken: true,
-       }
-     });
-     ```
-   - **Security Warning**: Since the anon key is hardcoded and likely committed to your GitHub repository, this is a security risk. Anyone with access to the repository can use the key to interact with your Supabase project. Consider moving to environment variables (see below) or regenerating the anon key after securing the repository.
-
-2. **Environment Variables (Recommended)**:
-   - Although you're keeping the hardcoded credentials, I strongly recommend switching to environment variables to secure your project:
-     - Create a `.env` file in the root directory:
-       ```
-       REACT_APP_SUPABASE_URL=https://ttwhalhtwbwrplnwzyvu.supabase.co
-       REACT_APP_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0d2hhbGh0d2J3cnBsbnd6eXZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE2NDI1NTUsImV4cCI6MjA2NzIxODU1NX0.ipn4vBipoVBQmBKc4dsTstk76l_WIcK9a09HTer3o4I
-       ```
-     - Update `supabaseClient.ts` to use:
-       ```typescript
-       const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
-       const SUPABASE_PUBLISHABLE_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY;
-
-       if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-         throw new Error('Supabase URL and Anon Key must be provided in environment variables');
-       }
-
-       export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-         auth: {
-           storage: localStorage,
-           persistSession: true,
-           autoRefreshToken: true,
-         }
-       });
-       ```
-     - Add `.env` to `.gitignore` to prevent committing sensitive data.
-
-3. **Supabase Storage Setup**:
-   - Ensure the `product-images` bucket exists in your Supabase project (under **Storage** in the dashboard).
-   - Verify that the bucket has a `public` folder (created automatically on first upload to `public/`).
-   - Set up storage policies in the Supabase dashboard:
-     - Go to **Storage** > **Policies**.
-     - Add a policy to allow uploads (e.g., `INSERT` permission for anon or authenticated users).
-     - Add a policy to allow public read access for image URLs (e.g., `SELECT` permission for the `public` folder).
-
-4. **Dependencies**:
-   - Ensure `@supabase/supabase-js` is installed:
-     ```bash
-     npm install @supabase/supabase-js
-     ```
-   - Verify other dependencies (`lucide-react`, `sonner`, UI components) are installed and compatible.
-
-5. **Restart Development Server**:
-   - After updating `ProductsManager.jsx`, restart your development server:
-     ```bash
-     npm start
-     ```
-     or
-     ```bash
-     yarn start
-     ```
-
-6. **GitHub and Deployment**:
-   - Since you're using GitHub, commit the updated `ProductsManager.jsx` to your repository.
-   - **Security Note**: If you keep the hardcoded credentials in `supabaseClient.ts`, regenerate your Supabase anon key after moving to environment variables to prevent unauthorized access.
-   - For deployment (e.g., Vercel, Netlify), add the Supabase URL and anon key as environment variables in the platform's settings if you switch to using `.env`.
-
-### Testing the Image Preview
-- **File Upload**:
-  - Select "Upload File" in the form, choose an image, and verify the preview appears immediately.
-  - The preview should show a 64x64 pixel image with rounded corners.
-- **URL Input**:
-  - Select "Image URL", enter a valid image URL, and verify the preview displays.
-  - If the URL is invalid, the preview should disappear (handled by the `onError` event).
-- **Switching Methods**:
-  - Switch between "Image URL" and "Upload File" to ensure the preview resets correctly and no memory leaks occur.
-
-### Troubleshooting
-- **Image Preview Not Showing**:
-  - For file uploads, ensure the file is a valid image (JPEG, PNG, etc.) and check the browser console for errors.
-  - For URLs, verify the URL is accessible and includes the protocol (e.g., `https://`). Test with a known valid image URL.
-  - Add `console.log(imagePreview)` in `handleFileChange` and the URL input's `onChange` to debug the preview state.
-- **Supabase Upload Errors**:
-  - Check the Supabase dashboard logs (**Storage** > **Logs**) for upload errors.
-  - Ensure the `product-images` bucket exists and has correct permissions.
-- **TypeScript Errors**:
-  - Verify the `Product` type in `useAdmin` includes all required fields (e.g., `id`, `name`, `image_url`).
-  - Ensure `Database` type in `supabaseClient.ts` is correctly defined.
-- **GitHub Security**:
-  - If you continue using hardcoded credentials, restrict repository access and regenerate the anon key after securing the project.
-
-If you encounter specific errors (e.g., console logs, TypeScript issues, or Supabase errors), please share them, and I can provide targeted fixes. Let me know if you need help setting up Supabase policies or securing your GitHub repository!
