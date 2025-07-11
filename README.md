@@ -1,73 +1,35 @@
-# Welcome to your Lovable project
+# 🖥️ Smarthub Computers
 
-## Project info
+Welcome to **Smarthub Computers**, your go-to tech shop based in Nairobi, Kenya. This website showcases premium electronics—from laptops and gaming rigs to mobile phones and audio gear—offered at unbeatable prices with a frictionless shopping experience.
 
-**URL**: https://lovable.dev/projects/86cf54b6-9b65-4e99-ab32-590bd5f3f0a3
+---
 
-## How can I edit this code?
+## 🚀 Overview
 
-There are several ways of editing your application.
+SmarthubComputers.com is a fast, mobile-friendly e-commerce platform designed for tech-savvy buyers and everyday users. Built for speed, clarity, and scalability—whether you're browsing the latest flash sales or exploring flagship products.
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/86cf54b6-9b65-4e99-ab32-590bd5f3f0a3) and start prompting.
+## 🛠️ Features
 
-Changes made via Lovable will be committed automatically to this repo.
+- 🌟 **Featured Tech Deals** with real-time pricing and visual badges
+- 🎯 **Promotional Slides** to highlight active offers and sales
+- 🛒 **Dynamic Cart System** with smart routing and product handling
+- 🔍 **Search Engine Optimization (SEO)** tailored for Kenya and global reach
+- 💅 **Lovable UI Components** powered by Tailwind CSS and Lucide Icons
+- 🔐 **Hooks for Authentication & Admin Control** (`useAuth`, `useAdmin`, `useCart`)
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🧩 Technologies Used
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **React + TypeScript**
+- **Tailwind CSS**
+- **React Router**
+- **Lucide Icons**
+- **Lovable (for UI Design & Deployment)**
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 📁 Folder Structure
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/86cf54b6-9b65-4e99-ab32-590bd5f3f0a3) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
