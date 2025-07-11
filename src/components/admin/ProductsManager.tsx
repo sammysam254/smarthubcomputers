@@ -35,6 +35,7 @@ const ProductsManager = () => {
   });
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     loadProducts();
@@ -53,25 +54,47 @@ const ProductsManager = () => {
     }
   };
 
+  const uploadFiles = async (files: File[]): Promise<string[]> => {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      return data.urls;
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      setFormData({ ...formData, images: [...formData.images, ...files] });
+      setFormData(prev => ({ ...prev, images: [...prev.images, ...files] }));
       
-      // Create preview URLs
       const newPreviews = files.map(file => URL.createObjectURL(file));
-      setPreviewImages([...previewImages, ...newPreviews]);
+      setPreviewImages(prev => [...prev, ...newPreviews]);
     }
   };
 
   const handleFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      setFormData({ ...formData, images: [...formData.images, ...files] });
+      setFormData(prev => ({ ...prev, images: [...prev.images, ...files] }));
       
-      // Create preview URLs
       const newPreviews = files.map(file => URL.createObjectURL(file));
-      setPreviewImages([...previewImages, ...newPreviews]);
+      setPreviewImages(prev => [...prev, ...newPreviews]);
     }
   };
 
@@ -82,7 +105,7 @@ const ProductsManager = () => {
     newImages.splice(index, 1);
     newPreviews.splice(index, 1);
     
-    setFormData({ ...formData, images: newImages });
+    setFormData(prev => ({ ...prev, images: newImages }));
     setPreviewImages(newPreviews);
     
     if (currentImageIndex >= newPreviews.length && newPreviews.length > 0) {
@@ -94,23 +117,42 @@ const ProductsManager = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsUploading(true);
     
     try {
+      let imageUrls: string[] = [];
+      
+      // Upload new images if there are any
+      if (formData.images.length > 0) {
+        imageUrls = await uploadFiles(formData.images);
+      }
+
+      // Use existing image_url if no new images were uploaded
+      const finalImageUrl = imageUrls.length > 0 ? imageUrls[0] : formData.image_url;
+      const allImageUrls = imageUrls.length > 0 ? imageUrls : 
+                          (formData.image_url ? [formData.image_url] : []);
+
       const productData = {
-        ...formData,
+        name: formData.name,
+        description: formData.description,
         price: parseFloat(formData.price),
         original_price: formData.original_price ? parseFloat(formData.original_price) : null,
+        category: formData.category,
+        image_url: finalImageUrl,
+        images: allImageUrls,
+        badge: formData.badge,
+        badge_color: formData.badge_color,
         rating: parseFloat(formData.rating),
         reviews_count: parseInt(formData.reviews_count),
-        // You'll need to handle the image uploads here
-        // This might involve uploading to a server or cloud storage
-        // and getting back URLs to store in your database
+        in_stock: formData.in_stock,
       };
 
       if (editingProduct) {
         await updateProduct(editingProduct.id, productData);
+        toast.success('Product updated successfully');
       } else {
         await createProduct(productData);
+        toast.success('Product created successfully');
       }
 
       setIsDialogOpen(false);
@@ -118,7 +160,9 @@ const ProductsManager = () => {
       loadProducts();
     } catch (error) {
       console.error('Error saving product:', error);
-      toast.error('Failed to save product');
+      toast.error('Failed to save product. Please try again.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -138,7 +182,7 @@ const ProductsManager = () => {
       reviews_count: product.reviews_count.toString(),
       in_stock: product.in_stock,
     });
-    setPreviewImages(product.image_url ? [product.image_url] : []);
+    setPreviewImages(product.images || []);
     setIsDialogOpen(true);
   };
 
@@ -147,6 +191,7 @@ const ProductsManager = () => {
     
     try {
       await deleteProduct(id);
+      toast.success('Product deleted successfully');
       loadProducts();
     } catch (error) {
       console.error('Error deleting product:', error);
@@ -225,6 +270,7 @@ const ProductsManager = () => {
                   <Select
                     value={formData.category}
                     onValueChange={(value) => setFormData({ ...formData, category: value })}
+                    required
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
@@ -428,11 +474,16 @@ const ProductsManager = () => {
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsDialogOpen(false)}
+                  disabled={isUploading}
+                >
                   Cancel
                 </Button>
-                <Button type="submit">
-                  {editingProduct ? 'Update Product' : 'Create Product'}
+                <Button type="submit" disabled={isUploading}>
+                  {isUploading ? 'Saving...' : editingProduct ? 'Update Product' : 'Create Product'}
                 </Button>
               </DialogFooter>
             </form>
@@ -457,12 +508,19 @@ const ProductsManager = () => {
               <TableRow key={product.id}>
                 <TableCell>
                   <div className="flex items-center space-x-3">
-                    {product.image_url && (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-12 h-12 object-cover rounded"
-                      />
+                    {product.images && product.images.length > 0 && (
+                      <div className="relative w-12 h-12">
+                        <img
+                          src={product.images[0]}
+                          alt={product.name}
+                          className="w-full h-full object-cover rounded"
+                        />
+                        {product.images.length > 1 && (
+                          <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                            +{product.images.length - 1}
+                          </span>
+                        )}
+                      </div>
                     )}
                     <div>
                       <div className="font-medium">{product.name}</div>
