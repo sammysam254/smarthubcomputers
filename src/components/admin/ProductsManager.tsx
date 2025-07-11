@@ -1,3 +1,4 @@
+```jsx
 import { useState, useEffect } from 'react';
 import { useAdmin, Product } from '@/hooks/useAdmin';
 import { Button } from '@/components/ui/button';
@@ -10,8 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Edit, Trash2, Star } from 'lucide-react';
+import { Plus, Edit, Trash2, Star, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '../integrations/supabaseClient';
 
 const ProductsManager = () => {
   const { fetchProducts, createProduct, updateProduct, deleteProduct } = useAdmin();
@@ -19,6 +21,11 @@ const ProductsManager = () => {
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadType, setUploadType] = useState('url'); // 'url' or 'file'
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -50,12 +57,54 @@ const ProductsManager = () => {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+      setFormData({ ...formData, image_url: '' }); // Clear URL when file is selected
+    }
+  };
+
+  const uploadImageToSupabase = async (file: File) => {
+    try {
+      setIsUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const { data, error } = await supabase.storage
+        .from('product-images')
+        .upload(`public/${fileName}`, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(`public/${fileName}`);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
+      throw error;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
+      let finalImageUrl = formData.image_url;
+
+      // Handle file upload if a file is selected
+      if (uploadType === 'file' && imageFile) {
+        finalImageUrl = await uploadImageToSupabase(imageFile);
+      }
+
       const productData = {
         ...formData,
+        image_url: finalImageUrl,
         price: parseFloat(formData.price),
         original_price: formData.original_price ? parseFloat(formData.original_price) : null,
         rating: parseFloat(formData.rating),
@@ -71,6 +120,7 @@ const ProductsManager = () => {
       setIsDialogOpen(false);
       resetForm();
       loadProducts();
+      toast.success(editingProduct ? 'Product updated successfully' : 'Product created successfully');
     } catch (error) {
       console.error('Error saving product:', error);
       toast.error('Failed to save product');
@@ -92,15 +142,19 @@ const ProductsManager = () => {
       reviews_count: product.reviews_count.toString(),
       in_stock: product.in_stock,
     });
+    setImagePreview(product.image_url || '');
+    setImageFile(null);
+    setUploadType(product.image_url ? 'url' : 'file');
     setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
-    
+
     try {
       await deleteProduct(id);
       loadProducts();
+      toast.success('Product deleted successfully');
     } catch (error) {
       console.error('Error deleting product:', error);
       toast.error('Failed to delete product');
@@ -122,6 +176,9 @@ const ProductsManager = () => {
       reviews_count: '0',
       in_stock: true,
     });
+    setImageFile(null);
+    setImagePreview('');
+    setUploadType('url');
   };
 
   const badgeColors = [
@@ -157,7 +214,7 @@ const ProductsManager = () => {
                 {editingProduct ? 'Update product information' : 'Create a new product for your store'}
               </DialogDescription>
             </DialogHeader>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -169,7 +226,7 @@ const ProductsManager = () => {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
                   <Select
@@ -214,7 +271,7 @@ const ProductsManager = () => {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="original_price">Original Price (KES)</Label>
                   <Input
@@ -229,14 +286,57 @@ const ProductsManager = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image_url">Image URL</Label>
-                <Input
-                  id="image_url"
-                  type="url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                />
+                <Label>Image Upload Method</Label>
+                <Select
+                  value={uploadType}
+                  onValueChange={(value) => {
+                    setUploadType(value);
+                    setImageFile(null);
+                    setImagePreview('');
+                    setFormData({ ...formData, image_url: '' });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select upload method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="url">Image URL</SelectItem>
+                    <SelectItem value="file">Upload File</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {uploadType === 'url' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="image_url">Image URL</Label>
+                  <Input
+                    id="image_url"
+                    type="url"
+                    value={formData.image_url}
+                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="image_file">Upload Image</Label>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      id="image_file"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {imagePreview && (
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-16 h-16 object-cover rounded"
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -247,7 +347,7 @@ const ProductsManager = () => {
                     onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="badge_color">Badge Color</Label>
                   <Select
@@ -281,7 +381,7 @@ const ProductsManager = () => {
                     onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="reviews_count">Reviews Count</Label>
                   <Input
@@ -312,8 +412,8 @@ const ProductsManager = () => {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">
-                  {editingProduct ? 'Update Product' : 'Create Product'}
+                <Button type="submit" disabled={isUploading}>
+                  {isUploading ? 'Uploading...' : editingProduct ? 'Update Product' : 'Create Product'}
                 </Button>
               </DialogFooter>
             </form>
@@ -411,4 +511,86 @@ const ProductsManager = () => {
   );
 };
 
-export default ProductsManager
+export default ProductsManager;
+```
+
+### Key Changes
+1. **Removed Direct Supabase Client Creation**:
+   - Replaced `import { createClient } from '@supabase/supabase-js'` and the `supabase` client initialization with:
+     ```javascript
+     import { supabase } from '../integrations/supabaseClient';
+     ```
+   - This imports the pre-configured Supabase client from `integrations/supabaseClient.ts`.
+
+2. **TypeScript Support**:
+   - Added TypeScript type annotations for state variables (`Product[]`, `File | null`, etc.) to ensure compatibility with your TypeScript setup.
+   - Ensured the `handleFileChange` function is typed correctly for the input event.
+
+3. **No Changes to Core Functionality**:
+   - The image upload functionality (both URL and file-based) remains unchanged, using the imported `supabase` client for storage operations.
+   - All other features (form handling, product CRUD operations, etc.) are preserved.
+
+### Additional Setup Instructions
+1. **Verify `supabaseClient.ts`**:
+   - Ensure `integrations/supabaseClient.ts` is correctly set up as shown above, with the environment variables `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_ANON_KEY`.
+   - If your `supabaseClient.ts` has a different export name (e.g., `supabaseClient` instead of `supabase`), update the import statement in `ProductsManager.jsx` accordingly:
+     ```javascript
+     import { supabaseClient as supabase } from '../integrations/supabaseClient';
+     ```
+
+2. **Environment Variables**:
+   - Confirm that your `.env` file in the root of your project contains:
+     ```
+     REACT_APP_SUPABASE_URL=https://your-project-ref.supabase.co
+     REACT_APP_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+     ```
+   - Ensure `.env` is listed in `.gitignore` to avoid committing sensitive data to GitHub.
+
+3. **Supabase Storage Setup**:
+   - In your Supabase dashboard, ensure the `product-images` bucket exists under **Storage**.
+   - Set up a `public` folder in the bucket (this is done automatically when you upload to `public/` in the code).
+   - Verify storage policies:
+     - Go to **Storage** > **Policies** in the Supabase dashboard.
+     - Ensure a policy allows uploads to the `product-images` bucket (e.g., `INSERT` permission for authenticated or anon users, depending on your setup).
+     - Ensure a policy allows public read access to retrieve the image URLs (e.g., `SELECT` permission for the `public` folder).
+
+4. **Dependencies**:
+   - Ensure `@supabase/supabase-js` is installed:
+     ```bash
+     npm install @supabase/supabase-js
+     ```
+   - Verify that all other dependencies (e.g., `lucide-react`, `sonner`, your UI components) are installed and compatible.
+
+5. **Restart Development Server**:
+   - After updating the code and `.env` file, restart your development server to load the environment variables:
+     ```bash
+     npm start
+     ```
+     or
+     ```bash
+     yarn start
+     ```
+
+6. **GitHub Integration**:
+   - Since you're using GitHub, ensure the updated `ProductsManager.jsx` is committed to your repository.
+   - If deploying to a platform like Vercel or Netlify, add the environment variables to the platform's settings:
+     - **Vercel**: Project Settings > Environment Variables.
+     - **Netlify**: Site Settings > Environment Variables.
+   - Use the same `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_ANON_KEY` values from your Supabase dashboard.
+
+### Troubleshooting
+- **Environment Variables Not Loading**:
+  - Check that the `.env` file is in the root directory and the variable names match exactly.
+  - Restart the development server after modifying `.env`.
+  - Use `console.log(process.env.REACT_APP_SUPABASE_URL)` in `supabaseClient.ts` to debug.
+- **Supabase Client Errors**:
+  - If you get authentication errors, verify the Supabase URL and anon key in the Supabase dashboard (**Settings** > **API**).
+  - Ensure the `supabase` export in `supabaseClient.ts` is correctly imported in `ProductsManager.jsx`.
+- **Storage Upload Issues**:
+  - Confirm the `product-images` bucket exists and has correct permissions.
+  - Check the Supabase dashboard logs for storage-related errors.
+- **GitHub Push Issues**:
+  - Ensure `.env` is not committed (check `.gitignore`).
+  - If using GitHub Actions, add environment variables to the repository's secrets (Settings > Secrets and variables > Actions).
+
+If you run into any specific errors or need help with a particular part of the setup (e.g., Supabase policies, GitHub deployment), let me know, and I can provide targeted assistance!
