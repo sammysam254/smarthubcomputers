@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { useAdmin, Product } from '@/hooks/useAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,29 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Edit, Trash2, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
+// Utility function for uploading images, update this to your backend logic
+async function uploadImages(files: File[]): Promise<string[]> {
+  // Example: Upload each file and get URLs
+  const urls: string[] = [];
+  for (const file of files) {
+    // Replace below with your actual upload logic (to S3, backend, etc.)
+    // Example: using FormData
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      urls.push(data.url); // Assume response is { url: "..." }
+    } catch (err) {
+      toast.error(`Failed to upload ${file.name}`);
+    }
+  }
+  return urls;
+}
+
 const ProductsManager = () => {
   const { fetchProducts, createProduct, updateProduct, deleteProduct } = useAdmin();
   const [products, setProducts] = useState<Product[]>([]);
@@ -25,13 +48,14 @@ const ProductsManager = () => {
     price: '',
     original_price: '',
     category: '',
-    image_url: '',
+    image_urls: [] as string[], // Array of URLs
     badge: '',
     badge_color: 'bg-blue-500',
     rating: '0',
     reviews_count: '0',
     in_stock: true,
   });
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   useEffect(() => {
     loadProducts();
@@ -50,9 +74,21 @@ const ProductsManager = () => {
     }
   };
 
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setSelectedFiles(Array.from(e.target.files));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    let image_urls = formData.image_urls;
+    if (selectedFiles.length > 0) {
+      toast.info('Uploading images...');
+      image_urls = await uploadImages(selectedFiles);
+    }
+
     try {
       const productData = {
         ...formData,
@@ -60,6 +96,7 @@ const ProductsManager = () => {
         original_price: formData.original_price ? parseFloat(formData.original_price) : null,
         rating: parseFloat(formData.rating),
         reviews_count: parseInt(formData.reviews_count),
+        image_urls,
       };
 
       if (editingProduct) {
@@ -85,19 +122,20 @@ const ProductsManager = () => {
       price: product.price.toString(),
       original_price: product.original_price?.toString() || '',
       category: product.category,
-      image_url: product.image_url || '',
+      image_urls: product.image_urls || [], // Array of URLs
       badge: product.badge || '',
       badge_color: product.badge_color || 'bg-blue-500',
       rating: product.rating.toString(),
       reviews_count: product.reviews_count.toString(),
       in_stock: product.in_stock,
     });
+    setSelectedFiles([]);
     setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
-    
+
     try {
       await deleteProduct(id);
       loadProducts();
@@ -115,13 +153,14 @@ const ProductsManager = () => {
       price: '',
       original_price: '',
       category: '',
-      image_url: '',
+      image_urls: [],
       badge: '',
       badge_color: 'bg-blue-500',
       rating: '0',
       reviews_count: '0',
       in_stock: true,
     });
+    setSelectedFiles([]);
   };
 
   const badgeColors = [
@@ -157,7 +196,7 @@ const ProductsManager = () => {
                 {editingProduct ? 'Update product information' : 'Create a new product for your store'}
               </DialogDescription>
             </DialogHeader>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -169,7 +208,6 @@ const ProductsManager = () => {
                     required
                   />
                 </div>
-                
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
                   <Select
@@ -214,7 +252,6 @@ const ProductsManager = () => {
                     required
                   />
                 </div>
-                
                 <div className="space-y-2">
                   <Label htmlFor="original_price">Original Price (KES)</Label>
                   <Input
@@ -228,14 +265,32 @@ const ProductsManager = () => {
                 </div>
               </div>
 
+              {/* Multiple Image Upload */}
               <div className="space-y-2">
-                <Label htmlFor="image_url">Image URL</Label>
+                <Label htmlFor="images">Product Images</Label>
                 <Input
-                  id="image_url"
-                  type="url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                  id="images"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileChange}
                 />
+                {(formData.image_urls.length > 0 || selectedFiles.length > 0) && (
+                  <div className="flex flex-wrap mt-2 gap-2">
+                    {formData.image_urls.map((url, idx) => (
+                      <img key={url + idx} src={url} alt={`Product Image ${idx + 1}`} className="w-16 h-16 object-cover rounded" />
+                    ))}
+                    {selectedFiles.map((file, idx) => (
+                      <img
+                        key={file.name + idx}
+                        src={URL.createObjectURL(file)}
+                        alt={file.name}
+                        className="w-16 h-16 object-cover rounded border"
+                      />
+                    ))}
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground">You can select multiple images.</div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -247,7 +302,6 @@ const ProductsManager = () => {
                     onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
                   />
                 </div>
-                
                 <div className="space-y-2">
                   <Label htmlFor="badge_color">Badge Color</Label>
                   <Select
@@ -281,7 +335,6 @@ const ProductsManager = () => {
                     onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
                   />
                 </div>
-                
                 <div className="space-y-2">
                   <Label htmlFor="reviews_count">Reviews Count</Label>
                   <Input
@@ -292,7 +345,6 @@ const ProductsManager = () => {
                     onChange={(e) => setFormData({ ...formData, reviews_count: e.target.value })}
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="in_stock">In Stock</Label>
                   <div className="flex items-center space-x-2 pt-2">
@@ -338,13 +390,21 @@ const ProductsManager = () => {
               <TableRow key={product.id}>
                 <TableCell>
                   <div className="flex items-center space-x-3">
-                    {product.image_url && (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                    )}
+                    {product.image_urls && product.image_urls.length > 0 ? (
+                      <div className="flex">
+                        {product.image_urls.slice(0, 3).map((url: string, idx: number) => (
+                          <img
+                            key={url + idx}
+                            src={url}
+                            alt={product.name}
+                            className="w-12 h-12 object-cover rounded mr-1"
+                          />
+                        ))}
+                        {product.image_urls.length > 3 && (
+                          <span className="text-xs text-muted-foreground ml-1">+{product.image_urls.length - 3} more</span>
+                        )}
+                      </div>
+                    ) : null}
                     <div>
                       <div className="font-medium">{product.name}</div>
                       {product.badge && (
