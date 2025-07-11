@@ -410,4 +410,4 @@ const ProductsManager = () => {
     </div>
   );
 };
-
+export default ProductsManager;
