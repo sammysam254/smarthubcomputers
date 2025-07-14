@@ -48,4 +48,9 @@ package = "@netlify/plugin-sitemap"
   from = "/audio/*"
   to = "/index.html"
   status = 200
+  
+  [[redirects]]
+  from = "/peripherals/*"
+  to = "/index.html"
+  status = 200
 
