@@ -22,3 +22,15 @@ package = "@netlify/plugin-sitemap"
   from = "/*"
   to = "/index.html"
   status = 200
+  
+  [[redirects]]
+  from = "/laptops/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/desktops/*"
+  to = "/index.html"
+  status = 200
+
+  
